@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noai, noimageai">
+  <meta name="copyright" content="TeenagerPlaybook. All rights reserved.">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+<script src="js/auth-guard.js"></script>
+</head>
+<body>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="signup.html">Register</a>
+    </div>
+  </div>
+</nav>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a href="index.html" class="back-btn">← Back to Home</a>
+    <div class="wood-panel">
+      <p class="title-main">Welcome Back</p>
+      <p class="title-sub">Sign into your archive</p>
+      <hr class="gold-rule">
+
+      <div class="form-group">
+        <label for="username">User ID</label>
+        <input type="text" id="username" placeholder="Enter your username" autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+      </div>
+
+      <div class="check-row mt-8 mb-16">
+        <input type="checkbox" id="rememberMe">
+        <label for="rememberMe">Remember me for 7 days</label>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="loginBtn" onclick="login()">Enter the Archive</button>
+      <p id="slowServerNotice" class="hidden" style="font-family:'IM Fell English',serif;font-style:italic;color:var(--gold-dim);font-size:0.85rem;text-align:center;margin-top:12px;line-height:1.6;">
+        ⏳ This may take up to 60 seconds on first use — the server is waking up. Please wait…
+      </p>
+
+      <div class="auth-footer-row mt-16">
+        <a href="index.html">← Go to Home</a>
+        <a href="signup.html">Create an account →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Popup -->
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions">
+      <button class="btn btn-secondary" onclick="closePopup()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script>
+  // Check if already logged in (token not expired)
+  (function() {
+    const token     = localStorage.getItem('tp_token');
+    const expiry    = localStorage.getItem('tp_token_expiry');
+    const remember  = localStorage.getItem('tp_remember');
+
+    if (token && remember === 'true') {
+      // 7-day remember-me: stay logged in
+      if (expiry && Date.now() < parseInt(expiry)) {
+        window.location.href = 'dashboard.html';
+        return;
+      } else {
+        localStorage.removeItem('tp_token');
+        localStorage.removeItem('tp_token_expiry');
+        localStorage.removeItem('tp_remember');
+        localStorage.removeItem('tp_role');
+        localStorage.removeItem('tp_user');
+      }
+    }
+    // session-only token handled by sessionStorage
+    if (sessionStorage.getItem('tp_token')) {
+      window.location.href = 'dashboard.html';
+    }
+  })();
+
+  function showPopup(title, msg, type='') {
+    document.getElementById('popupTitle').textContent = title;
+    const body = document.getElementById('popupBody');
+    body.textContent = msg;
+    body.className = 'popup-body ' + type;
+    document.getElementById('msgPopup').classList.remove('hidden');
+  }
+
+  function closePopup() {
+    document.getElementById('msgPopup').classList.add('hidden');
+  }
+
+  // allow Enter key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') login();
+  });
+
+  async function login() {
+    const username   = document.getElementById('username').value.trim();
+    const password   = document.getElementById('password').value;
+    const rememberMe = document.getElementById('rememberMe').checked;
+
+    if (!username || !password) {
+      return showPopup('Missing Fields', 'Please enter your User ID and password.', 'error');
+    }
+
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    document.getElementById('slowServerNotice').classList.remove('hidden');
+    btn.textContent = 'Signing in…';
+
+    try {
+      const res = await fetch(API_BASE + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        if (rememberMe) {
+          // Store in localStorage with 7-day expiry
+          const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
+          localStorage.setItem('tp_token', data.token);
+          localStorage.setItem('tp_token_expiry', expiry.toString());
+          localStorage.setItem('tp_remember', 'true');
+          localStorage.setItem('tp_role', data.role);
+          localStorage.setItem('tp_user', username);
+        } else {
+          // Session only — cleared on tab close
+          sessionStorage.setItem('tp_token', data.token);
+          sessionStorage.setItem('tp_role', data.role);
+          sessionStorage.setItem('tp_user', username);
+        }
+
+        if (data.role === 'admin') {
+          window.location.href = 'admin.html';
+        } else {
+          window.location.href = 'dashboard.html';
+        }
+      } else {
+        showPopup('Login Failed', data.msg || 'Invalid credentials. Please try again.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Enter the Archive';
+      }
+    } catch(e) {
+      showPopup('Server Error', 'Could not connect to the server. Please ensure the server is running.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Enter the Archive';
+    }
+  }
+</script>
+</body>
+</html>

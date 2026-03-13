@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noai, noimageai">
+  <meta name="copyright" content="TeenagerPlaybook. All rights reserved.">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+<script src="js/auth-guard.js"></script>
+</head>
+<body>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="login.html">Login</a>
+    </div>
+  </div>
+</nav>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a href="index.html" class="back-btn">← Back to Home</a>
+    <div class="wood-panel">
+      <p class="title-main">Create Account</p>
+      <p class="title-sub">Join the Archive — your journey begins here</p>
+      <hr class="gold-rule">
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" placeholder="your@email.com" autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label for="username">User ID</label>
+        <input type="text" id="username" placeholder="Choose a unique username" autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Create a strong password" autocomplete="new-password">
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" placeholder="Repeat your password">
+      </div>
+
+      <hr class="gold-rule">
+      <p class="panel-label">Consent &amp; Agreements</p>
+
+      <div class="check-row">
+        <input type="checkbox" id="agreeTerms">
+        <label for="agreeTerms">
+          I have read and accept the
+          <a href="policies/terms.html" target="_blank">Terms of Use</a> and
+          <a href="policies/privacy.html" target="_blank">Privacy Policy</a>.
+        </label>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="agreeCookies">
+        <label for="agreeCookies">
+          I consent to the use of local storage for session management and
+          <a href="policies/cookies.html" target="_blank">cookie-equivalent data</a>.
+        </label>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="agreeCamera">
+        <label for="agreeCamera">
+          I consent to camera and microphone access being requested during relevant exercises.
+        </label>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="agreeAge">
+        <label for="agreeAge">
+          I confirm that I am using this platform for educational purposes only.
+        </label>
+      </div>
+
+      <button class="btn btn-primary btn-full mt-16" id="signupBtn" onclick="signup()">Create My Account</button>
+      <p id="slowServerNotice" class="hidden" style="font-family:'IM Fell English',serif;font-style:italic;color:var(--gold-dim);font-size:0.85rem;text-align:center;margin-top:12px;line-height:1.6;">
+        ⏳ This may take up to 60 seconds on first use — the server is waking up. Please wait…
+      </p>
+
+      <div class="auth-footer-row mt-16">
+        <span></span>
+        <a href="login.html">Already have an account? →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Popup -->
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions">
+      <button class="btn btn-secondary" onclick="closePopup()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script>
+  function showPopup(title, msg, type='') {
+    document.getElementById('popupTitle').textContent = title;
+    const body = document.getElementById('popupBody');
+    body.textContent = msg;
+    body.className = 'popup-body ' + type;
+    document.getElementById('msgPopup').classList.remove('hidden');
+  }
+
+  function closePopup() {
+    document.getElementById('msgPopup').classList.add('hidden');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 3500);
+  }
+
+  async function signup() {
+    const email    = document.getElementById('email').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm  = document.getElementById('confirmPassword').value;
+
+    if (!email || !username || !password) {
+      return showPopup('Missing Fields', 'Please fill in all fields.', 'error');
+    }
+
+    if (password !== confirm) {
+      return showPopup('Password Mismatch', 'Your passwords do not match. Please try again.', 'error');
+    }
+
+    if (password.length < 6) {
+      return showPopup('Weak Password', 'Password must be at least 6 characters.', 'error');
+    }
+
+    const checks = ['agreeTerms','agreeCookies','agreeCamera','agreeAge'];
+    const allChecked = checks.every(id => document.getElementById(id).checked);
+    if (!allChecked) {
+      return showPopup('Consent Required', 'You must accept all agreements before creating an account.', 'warning');
+    }
+
+    document.getElementById('signupBtn').disabled = true;
+    document.getElementById('signupBtn').textContent = 'Creating account…';
+    document.getElementById('slowServerNotice').classList.remove('hidden');
+
+    try {
+      const res = await fetch(API_BASE + '/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, username, password })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        showPopup('Account Created!', 'Your account has been created successfully. You will now be redirected to the login page.', 'success');
+        setTimeout(() => { window.location.href = 'login.html'; }, 2200);
+      } else {
+        showPopup('Registration Failed', data.msg || 'An error occurred. Please try again.', 'error');
+        document.getElementById('signupBtn').disabled = false;
+        document.getElementById('signupBtn').textContent = 'Create My Account';
+      }
+    } catch(e) {
+      showPopup('Server Error', 'Could not connect to the server. Please ensure the server is running.', 'error');
+      document.getElementById('signupBtn').disabled = false;
+      document.getElementById('signupBtn').textContent = 'Create My Account';
+    }
+  }
+</script>
+</body>
+</html>

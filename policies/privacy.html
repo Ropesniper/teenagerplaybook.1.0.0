@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noai, noimageai">
+  <meta name="copyright" content="TeenagerPlaybook. All rights reserved.">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="../index.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="terms.html">Terms</a>
+      <a href="cookies.html">Cookies</a>
+      <a href="../index.html">Home</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <a href="javascript:history.back()" class="back-btn">← Go Back</a>
+
+  <p class="title-main">Privacy Policy</p>
+  <p class="title-sub">How your information is collected, stored, and used</p>
+  <hr class="gold-rule">
+
+  <div class="wood-panel">
+
+    <div class="policy-section">
+      <h3>1. Data We Collect</h3>
+      <p>When you register, we collect:</p>
+      <ul>
+        <li><strong style="color:var(--gold);">Email address</strong> — for account identification only</li>
+        <li><strong style="color:var(--gold);">Username</strong> — your unique platform identifier</li>
+        <li><strong style="color:var(--gold);">Password</strong> — stored as a secure bcrypt hash, never in plain text</li>
+        <li><strong style="color:var(--gold);">Exercise history</strong> — session type, accuracy scores, pass/fail, and timestamps linked to your account</li>
+      </ul>
+    </div>
+
+    <div class="policy-section">
+      <h3>2. Data We Do NOT Collect</h3>
+      <ul>
+        <li>Camera footage or images — all camera processing is local (client-side)</li>
+        <li>Audio recordings — all microphone processing is local (client-side)</li>
+        <li>Browsing history or third-party tracking data</li>
+        <li>Location data</li>
+        <li>Any biometric templates or facial recognition data stored on servers</li>
+      </ul>
+    </div>
+
+    <div class="policy-section">
+      <h3>3. How Data is Stored</h3>
+      <p>Account data and exercise history are stored in a MongoDB database hosted locally or on a designated private server. Only the platform administrator has database access. Your data is protected by JWT (JSON Web Token) authentication on all secure endpoints.</p>
+    </div>
+
+    <div class="policy-section">
+      <h3>4. Session Data &amp; Local Storage</h3>
+      <p>Your session token may be stored in your browser's local storage (if you select "Remember me for 7 days") or session storage (for session-only access). This data is used exclusively to keep you authenticated and is cleared on expiry or logout.</p>
+      <p>Exercise history is also cached locally in your browser for offline access and merged with server records when available.</p>
+    </div>
+
+    <div class="policy-section">
+      <h3>5. Data Sharing</h3>
+      <p>Your personal data is <strong style="color:var(--gold);">never sold, shared, or disclosed to third parties</strong>. Data is used solely for platform functionality and the IB MYP project evaluation process.</p>
+    </div>
+
+    <div class="policy-section">
+      <h3>6. Data Retention</h3>
+      <p>Your account and history data is retained for the duration of the project. You may request deletion of your account and associated data by contacting the administrator.</p>
+    </div>
+
+    <div class="policy-section">
+      <h3>7. Your Rights</h3>
+      <ul>
+        <li>Right to access your exercise history (available in the History section)</li>
+        <li>Right to delete your local history (available in History page)</li>
+        <li>Right to request full account deletion from the administrator</li>
+      </ul>
+    </div>
+
+    <div class="policy-section">
+      <h3>8. Security</h3>
+      <p>Passwords are hashed using bcryptjs before storage. All authenticated API requests require a valid JWT token. The admin panel requires elevated permissions and a separate admin credential.</p>
+    </div>
+
+    <p class="muted" style="font-size:0.8rem;margin-top:24px;">Last updated: 2025. IB MYP 5 Personal Project.</p>
+  </div>
+</div>
+
+</body>
+</html>

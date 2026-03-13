@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noai, noimageai">
+  <meta name="copyright" content="TeenagerPlaybook. All rights reserved.">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .note-inbox-item {
+      background: rgba(30,15,8,0.45);
+      border: 1px solid var(--wood-mid);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      transition: border-color 0.2s;
+    }
+    .note-inbox-item.has-reply { border-color: var(--gold-dim); }
+    .note-inbox-item.pending   { border-left: 3px solid #e09040; }
+    .note-inbox-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .note-inbox-user {
+      font-family: 'Cinzel', serif;
+      font-size: 0.82rem;
+      color: var(--gold);
+      letter-spacing: 0.05em;
+    }
+    .note-inbox-date {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+    .note-inbox-msg {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+    .note-reply-area {
+      border-top: 1px solid rgba(180,130,40,0.15);
+      padding-top: 12px;
+      margin-top: 4px;
+    }
+    .reply-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem;
+      color: var(--gold-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .pending-tag {
+      display: inline-block;
+      background: rgba(180,100,20,0.3);
+      color: #e09040;
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      border: 1px solid rgba(180,100,20,0.5);
+      border-radius: 6px;
+      padding: 2px 8px;
+      letter-spacing: 0.06em;
+    }
+    .replied-tag {
+      display: inline-block;
+      background: rgba(40,120,40,0.2);
+      color: #60c060;
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      border: 1px solid rgba(40,120,40,0.4);
+      border-radius: 6px;
+      padding: 2px 8px;
+      letter-spacing: 0.06em;
+    }
+  </style>
+</head>
+<body>
+
+<script src="js/auth-guard.js"></script>
+<script>const _sess = requireAdmin();</script>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="admin.html" class="active">Admin</a>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+  <p class="title-main">Archive Control Panel</p>
+  <p class="title-sub">Manage content, media, users, and personal sessions</p>
+  <hr class="gold-rule">
+
+  <!-- ── USER NOTES INBOX ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">✉️ User Notes Inbox</p>
+    <p class="muted mb-16" style="font-size:0.85rem;">Messages from users requesting personalised sessions or guidance. Reply with a message and optionally grant access to a specific video.</p>
+
+    <div id="notesInbox">
+      <p class="muted" style="font-style:italic;font-size:0.85rem;">Loading notes…</p>
+    </div>
+  </div>
+
+  <!-- ── VIDEO MANAGEMENT ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">📹 Video Management</p>
+
+    <h3 class="panel-label" style="margin-bottom:10px;">Upload Session Video</h3>
+    <p class="muted mb-16" style="font-size:0.85rem;">
+      For standard sessions, select the target below. For a <strong style="color:var(--gold);">personal video</strong> (assigned to a specific user via their note), type a custom filename — then grant it from the Notes Inbox above.
+    </p>
+
+    <div class="form-group">
+      <label for="videoTarget">Target / Filename</label>
+      <select id="videoTarget" onchange="handleTargetChange()">
+        <option value="BodyPostures">Body Postures (BodyPostures.mp4)</option>
+        <option value="FacialExpression">Facial Expressions (FacialExpression.mp4)</option>
+        <option value="Intonation">Intonation (Intonation.mp4)</option>
+        <option value="custom">Personal Video (custom filename)…</option>
+      </select>
+    </div>
+
+    <div class="form-group hidden" id="customFilenameWrap">
+      <label for="customFilename">Custom Filename (no spaces, no extension)</label>
+      <input type="text" id="customFilename" placeholder="e.g. personal_alice_posture">
+      <p class="muted" style="font-size:0.78rem;margin-top:4px;">File will be saved as: <span id="filenamePreview" style="color:var(--gold);">—</span></p>
+    </div>
+
+    <div class="drop-zone" id="dropZone"
+         onclick="document.getElementById('videoFileInput').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+      <div class="drop-zone-icon">📁</div>
+      <p class="drop-zone-text">Click or drag & drop a video file here</p>
+      <p class="muted" style="font-size:0.78rem;margin-top:4px;" id="selectedFileName">No file selected</p>
+      <input type="file" id="videoFileInput" accept="video/mp4,video/webm" style="display:none;" onchange="onFileSelect(event)">
+    </div>
+
+    <button class="btn btn-primary" onclick="uploadVideo()">Upload Video</button>
+    <div style="margin-top:8px;height:8px;border-radius:4px;background:rgba(40,20,10,0.4);overflow:hidden;">
+      <div id="uploadProgress" style="height:100%;width:0%;background:linear-gradient(90deg,var(--wood-honey),var(--gold));transition:width 0.3s;border-radius:4px;"></div>
+    </div>
+
+    <hr class="gold-rule">
+
+    <h3 class="panel-label">Current Videos in /videos/</h3>
+    <div id="videoList"><p class="muted" style="font-style:italic;font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- ── POLL & ANNOUNCEMENT MANAGEMENT ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">📢 Polls &amp; Announcements</p>
+
+    <h3 class="panel-label" style="margin-bottom:10px;">Create New</h3>
+    <div class="form-group">
+      <label for="pollQuestion">Question or Announcement Text</label>
+      <textarea id="pollQuestion" placeholder="e.g. Which session have you found most helpful this week?" style="min-height:70px;"></textarea>
+    </div>
+
+    <div id="pollOptionsWrap">
+      <label style="font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:8px;">
+        Poll Options <span class="muted" style="text-transform:none;letter-spacing:0;">(leave empty for announcement)</span>
+      </label>
+      <div id="optionsList">
+        <div class="form-group"><input type="text" class="poll-option-input" placeholder="Option 1"></div>
+        <div class="form-group"><input type="text" class="poll-option-input" placeholder="Option 2"></div>
+      </div>
+      <button class="btn btn-secondary btn-sm mt-8" onclick="addOption()">+ Add Option</button>
+    </div>
+
+    <div class="flex gap-12 mt-16" style="flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="createPoll()">Publish Poll</button>
+      <button class="btn btn-secondary" onclick="createAnnouncement()">📌 Publish Announcement</button>
+    </div>
+
+    <hr class="gold-rule">
+
+    <h3 class="panel-label">Existing Polls &amp; Announcements</h3>
+    <div id="adminPollList"><p class="muted" style="font-style:italic;font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- ── USER HISTORY ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">📊 User Session History</p>
+    <div class="form-group" style="max-width:300px;">
+      <label for="userFilter">Filter by Username</label>
+      <input type="text" id="userFilter" placeholder="Leave blank for all" oninput="filterHistory()">
+    </div>
+    <div id="adminHistoryList"><p class="muted" style="font-style:italic;font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- ── USERS ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">👤 Registered Users</p>
+    <div id="userList"><p class="muted" style="font-style:italic;font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+</div>
+
+<!-- Confirm / Generic Popup -->
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions">
+      <button class="btn btn-secondary" onclick="closePopup()">Close</button>
+      <button class="btn btn-danger btn-sm" id="confirmBtn" style="display:none;"></button>
+    </div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+  let selectedFile = null;
+  let allHistory   = [];
+
+  const sess        = getSession();
+  const token       = sess ? sess.token : '';
+  const authHeaders = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadNotesInbox();
+    loadVideoList();
+    loadAdminPolls();
+    loadAdminHistory();
+    loadUsers();
+  });
+
+  // ─────────────────────────────
+  // NOTES INBOX
+  // ─────────────────────────────
+
+  async function loadNotesInbox() {
+    const inbox = document.getElementById('notesInbox');
+    try {
+      const res   = await adminFetch(API_BASE + '/admin/notes', { headers:{ 'Authorization':'Bearer '+token } });
+      const notes = await res.json();
+
+      if (!notes.length) {
+        inbox.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No user notes yet.</p>';
+        return;
+      }
+
+      inbox.innerHTML = '';
+      notes.forEach(note => {
+        const hasReply = note.adminReply && note.adminReply.trim();
+        const div = document.createElement('div');
+        div.className = `note-inbox-item${hasReply ? ' has-reply' : ' pending'}`;
+        div.id = 'note-' + note._id;
+
+        div.innerHTML = `
+          <div class="note-inbox-head">
+            <span class="note-inbox-user">👤 ${note.username}</span>
+            <span class="note-inbox-date">${new Date(note.createdAt).toLocaleString()}</span>
+            <span class="${hasReply ? 'replied-tag' : 'pending-tag'}">${hasReply ? 'REPLIED' : 'PENDING'}</span>
+          </div>
+          <p class="note-inbox-msg">${note.message}</p>
+
+          <div class="note-reply-area">
+            <p class="reply-label">Your Reply</p>
+            <div class="form-group">
+              <textarea id="reply-${note._id}" style="min-height:70px;" placeholder="Write your reply to ${note.username}…">${note.adminReply || ''}</textarea>
+            </div>
+
+            <p class="reply-label" style="margin-top:12px;">Grant a Personal Video (optional)</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.72rem;">Video Filename (from /videos/)</label>
+                <input type="text" id="grant-file-${note._id}" placeholder="e.g. personal_alice.mp4"
+                       value="${note.grantedVideo && note.grantedVideo.filename ? note.grantedVideo.filename : ''}">
+                <p class="muted" style="font-size:0.7rem;margin-top:3px;" id="videoHint-${note._id}">Loading available videos…</p>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.72rem;">Session Label</label>
+                <input type="text" id="grant-label-${note._id}" placeholder="e.g. Your Custom Posture Session"
+                       value="${note.grantedVideo && note.grantedVideo.label ? note.grantedVideo.label : ''}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label style="font-size:0.72rem;">Short Description for User</label>
+              <input type="text" id="grant-desc-${note._id}" placeholder="e.g. Focused on open stance and eye contact"
+                     value="${note.grantedVideo && note.grantedVideo.description ? note.grantedVideo.description : ''}">
+            </div>
+
+            <div class="flex gap-8" style="flex-wrap:wrap;margin-top:4px;">
+              <button class="btn btn-primary btn-sm" onclick="sendReply('${note._id}')">Send Reply</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteNote('${note._id}')">Delete Note</button>
+            </div>
+          </div>
+        `;
+        inbox.appendChild(div);
+      });
+      // Populate video hint labels with available filenames
+      try {
+        const vRes   = await adminFetch(API_BASE + '/admin/videos', { headers:{ 'Authorization':'Bearer '+token } });
+        const videos = await vRes.json();
+        const hint   = videos.length ? '📁 Available: ' + videos.map(v=>v.name).join(', ') : 'No videos uploaded yet';
+        notes.forEach(n => {
+          const hintEl = document.getElementById('videoHint-' + n._id);
+          if (hintEl) { hintEl.textContent = hint; hintEl.style.color = 'var(--gold-dim)'; }
+        });
+      } catch(e) {}
+    } catch(e) {
+      inbox.innerHTML = '<p class="muted" style="font-size:0.85rem;">Could not load notes.</p>';
+    }
+  }
+
+  async function sendReply(noteId) {
+    const adminReply  = document.getElementById('reply-' + noteId).value.trim();
+    const grantFile   = document.getElementById('grant-file-'  + noteId).value.trim();
+    const grantLabel  = document.getElementById('grant-label-' + noteId).value.trim();
+    const grantDesc   = document.getElementById('grant-desc-'  + noteId).value.trim();
+
+    if (!adminReply) return showToast('Please write a reply before sending.');
+
+    const body = { adminReply };
+    if (grantFile) {
+      body.grantedVideo = { filename: grantFile, label: grantLabel || 'Personal Session', description: grantDesc };
+    }
+
+    try {
+      const res = await adminFetch(`/admin/notes/${noteId}/reply`, {
+        method:  'PATCH',
+        headers: authHeaders,
+        body:    JSON.stringify(body)
+      });
+      if (res.ok) {
+        showToast('Reply sent to user. ✦');
+        loadNotesInbox();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        // Fix 4: show exact server error (e.g. "file does not exist")
+        showPopup('Could Not Send Reply', data.msg || 'An error occurred. Please try again.', 'error');
+      }
+    } catch(e) { showToast('Server error.'); }
+  }
+
+  async function deleteNote(noteId) {
+    showConfirmPopup('Delete Note', 'Delete this note and reply permanently?', async () => {
+      await adminFetch(API_BASE + '/admin/notes/' + noteId, { method:'DELETE', headers:{ 'Authorization':'Bearer '+token } });
+      showToast('Note deleted.');
+      loadNotesInbox();
+    });
+  }
+
+  // ─────────────────────────────
+  // VIDEO MANAGEMENT
+  // ─────────────────────────────
+
+  function handleTargetChange() {
+    const val  = document.getElementById('videoTarget').value;
+    const wrap = document.getElementById('customFilenameWrap');
+    if (val === 'custom') { wrap.classList.remove('hidden'); }
+    else                  { wrap.classList.add('hidden'); }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('customFilename').addEventListener('input', () => {
+      const fn = document.getElementById('customFilename').value.trim().replace(/\s+/g,'_');
+      document.getElementById('filenamePreview').textContent = fn ? fn + '.mp4' : '—';
+    });
+  });
+
+  function getTargetName() {
+    const val = document.getElementById('videoTarget').value;
+    if (val === 'custom') {
+      const fn = document.getElementById('customFilename').value.trim().replace(/\s+/g,'_');
+      return fn || 'CustomVideo';
+    }
+    return val;
+  }
+
+  function onFileSelect(e) {
+    selectedFile = e.target.files[0];
+    document.getElementById('selectedFileName').textContent = selectedFile ? selectedFile.name : 'No file selected';
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.remove('drag-over');
+    selectedFile = e.dataTransfer.files[0];
+    document.getElementById('selectedFileName').textContent = selectedFile ? selectedFile.name : 'No file selected';
+  }
+
+  async function uploadVideo() {
+    if (!selectedFile) return showToast('Please select a video file first.');
+    const target = getTargetName();
+    const form   = new FormData();
+    form.append('video', selectedFile);
+    form.append('target', target);
+
+    const bar = document.getElementById('uploadProgress');
+    bar.style.width = '15%';
+
+    try {
+      const res  = await adminFetch(API_BASE + '/admin/upload-video', { method:'POST', headers:{ 'Authorization':'Bearer '+token }, body: form });
+      bar.style.width = '100%';
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`"${data.filename}" uploaded successfully! ✦`);
+        loadVideoList();
+      } else {
+        showPopup('Upload Failed', data.msg || 'Upload failed.', 'error');
+      }
+      setTimeout(() => { bar.style.width = '0%'; }, 1500);
+    } catch(e) {
+      showPopup('Error', 'Could not upload. Ensure server is running.', 'error');
+      bar.style.width = '0%';
+    }
+  }
+
+  async function loadVideoList() {
+    const container = document.getElementById('videoList');
+    try {
+      const res  = await adminFetch(API_BASE + '/admin/videos', { headers:{ 'Authorization':'Bearer '+token } });
+      const data = await res.json();
+      if (!data.length) { container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No videos uploaded yet.</p>'; return; }
+      container.innerHTML = data.map(v => `
+        <div class="file-list-item">
+          <span class="file-list-name">📹 ${v.name}</span>
+          <span class="file-list-size">${v.size}</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteVideo('${v.name}')">Delete</button>
+        </div>
+      `).join('');
+    } catch(e) { container.innerHTML = '<p class="muted" style="font-size:0.85rem;">Could not load video list.</p>'; }
+  }
+
+  function deleteVideo(name) {
+    showConfirmPopup('Delete Video', `Delete "${name}"? This cannot be undone.`, async () => {
+      await adminFetch(API_BASE + '/admin/videos/' + encodeURIComponent(name), { method:'DELETE', headers:{ 'Authorization':'Bearer '+token } });
+      showToast('Video deleted.');
+      loadVideoList();
+    });
+  }
+
+  // ─────────────────────────────
+  // POLLS & ANNOUNCEMENTS
+  // ─────────────────────────────
+
+  function addOption() {
+    const list  = document.getElementById('optionsList');
+    const count = list.querySelectorAll('.poll-option-input').length + 1;
+    const div   = document.createElement('div');
+    div.className = 'form-group';
+    div.innerHTML = `<input type="text" class="poll-option-input" placeholder="Option ${count}">`;
+    list.appendChild(div);
+  }
+
+  async function createPoll() {
+    const question = document.getElementById('pollQuestion').value.trim();
+    const options  = [...document.querySelectorAll('.poll-option-input')].map(i=>i.value.trim()).filter(Boolean);
+    if (!question) return showToast('Please enter a question.');
+    if (options.length < 2) return showToast('Add at least 2 options for a poll.');
+
+    try {
+      const res = await adminFetch(API_BASE + '/polls', {
+        method:  'POST',
+        headers: authHeaders,
+        body:    JSON.stringify({ question, options: options.map(t=>({ text:t })) })
+      });
+      if (res.ok) {
+        showToast('Poll published to dashboard! ✦');
+        document.getElementById('pollQuestion').value = '';
+        document.querySelectorAll('.poll-option-input').forEach(i => i.value='');
+        loadAdminPolls();
+      }
+    } catch(e) { showToast('Could not publish.'); }
+  }
+
+  async function createAnnouncement() {
+    const question = document.getElementById('pollQuestion').value.trim();
+    if (!question) return showToast('Please enter the announcement text.');
+    try {
+      const res = await adminFetch(API_BASE + '/polls', {
+        method:  'POST',
+        headers: authHeaders,
+        body:    JSON.stringify({ question, options: [], isAnnouncement: true })
+      });
+      if (res.ok) {
+        showToast('Announcement published! ✦');
+        document.getElementById('pollQuestion').value = '';
+        loadAdminPolls();
+      }
+    } catch(e) { showToast('Could not publish.'); }
+  }
+
+  async function loadAdminPolls() {
+    const container = document.getElementById('adminPollList');
+    try {
+      const res   = await adminFetch(API_BASE + '/polls', { headers:{ 'Authorization':'Bearer '+token } });
+      const polls = await res.json();
+      if (!polls.length) { container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No polls yet.</p>'; return; }
+      container.innerHTML = polls.map(p => `
+        <div class="wood-panel" style="padding:14px 18px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+            <div style="flex:1;">
+              <p style="font-family:'Cinzel',serif;font-size:0.85rem;color:var(--gold);margin-bottom:6px;">
+                ${p.isAnnouncement ? '📌 ' : '📊 '}${p.question}
+              </p>
+              ${p.options.map(o => `
+                <p class="muted" style="font-size:0.8rem;margin-bottom:3px;">
+                  • ${o.text} — <strong style="color:var(--wood-honey);">${o.votes}</strong> vote(s)
+                  ${p.isAnnouncement ? '' : `<span style="color:var(--text-dim);font-size:0.72rem;">[voters: ${(o.voters||[]).join(', ') || 'none'}]</span>`}
+                </p>`).join('')}
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="deletePoll('${p._id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    } catch(e) { container.innerHTML = '<p class="muted" style="font-size:0.85rem;">Could not load.</p>'; }
+  }
+
+  async function deletePoll(id) {
+    showConfirmPopup('Delete', 'Delete this poll/announcement?', async () => {
+      await adminFetch(API_BASE + '/polls/' + id, { method:'DELETE', headers:{ 'Authorization':'Bearer '+token } });
+      showToast('Deleted.');
+      loadAdminPolls();
+    });
+  }
+
+  // ─────────────────────────────
+  // HISTORY & USERS
+  // ─────────────────────────────
+
+  async function loadAdminHistory() {
+    const container = document.getElementById('adminHistoryList');
+    try {
+      const res  = await adminFetch(API_BASE + '/admin/history', { headers:{ 'Authorization':'Bearer '+token } });
+      allHistory = await res.json();
+      renderHistory(allHistory);
+    } catch(e) { container.innerHTML = '<p class="muted" style="font-size:0.85rem;">Could not load.</p>'; }
+  }
+
+  function renderHistory(data) {
+    const container = document.getElementById('adminHistoryList');
+    if (!data.length) { container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No history yet.</p>'; return; }
+    const typeLabels = { bodypostures:'🧍 Body Postures', facialexpression:'😊 Facial', intonation:'🎙️ Intonation' };
+    container.innerHTML = data.map(e => `
+      <div class="file-list-item" style="flex-wrap:wrap;">
+        <span class="file-list-name" style="font-family:'Cinzel',serif;color:var(--text-muted);">${e.username||'Unknown'}</span>
+        <span style="font-size:0.8rem;color:var(--wood-honey);">${typeLabels[e.type]||e.type}</span>
+        <span style="font-size:0.8rem;color:${e.passed?'#60c060':'#c06060'};">${e.accuracy}% — ${e.passed?'PASS':'FAIL'}</span>
+        <span class="file-list-size">${new Date(e.timestamp||e.createdAt).toLocaleDateString()}</span>
+      </div>`).join('');
+  }
+
+  function filterHistory() {
+    const q = document.getElementById('userFilter').value.trim().toLowerCase();
+    renderHistory(q ? allHistory.filter(e=>(e.username||'').toLowerCase().includes(q)) : allHistory);
+  }
+
+  async function loadUsers() {
+    const container = document.getElementById('userList');
+    try {
+      const res   = await adminFetch(API_BASE + '/admin/users', { headers:{ 'Authorization':'Bearer '+token } });
+      const users = await res.json();
+      if (!users.length) { container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No users yet.</p>'; return; }
+      container.innerHTML = users.map(u => `
+        <div class="file-list-item">
+          <span class="file-list-name">👤 ${u.username}</span>
+          <span style="font-size:0.78rem;color:var(--text-dim);">${u.email}</span>
+          <span style="font-family:'Cinzel',serif;font-size:0.75rem;color:${u.role==='admin'?'var(--gold)':'var(--text-muted)'};">${u.role.toUpperCase()}</span>
+          ${u.role!=='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteUser('${u._id}','${u.username}')">Remove</button>`:''}
+        </div>`).join('');
+    } catch(e) { container.innerHTML = '<p class="muted" style="font-size:0.85rem;">Could not load.</p>'; }
+  }
+
+  async function deleteUser(id, name) {
+    showConfirmPopup('Remove User', `Remove "${name}" and all their data?`, async () => {
+      await adminFetch(API_BASE + '/admin/users/' + id, { method:'DELETE', headers:{ 'Authorization':'Bearer '+token } });
+      showToast('User removed.');
+      loadUsers();
+      loadAdminHistory();
+    });
+  }
+
+  // ─────────────────────────────
+  // HELPERS
+  // ─────────────────────────────
+
+  function showConfirmPopup(title, msg, onConfirm) {
+    document.getElementById('popupTitle').textContent = title;
+    document.getElementById('popupBody').textContent  = msg;
+    document.getElementById('popupBody').className    = 'popup-body warning';
+    const btn = document.getElementById('confirmBtn');
+    btn.textContent   = 'Confirm';
+    btn.style.display = 'inline-flex';
+    btn.onclick       = () => { closePopup(); onConfirm(); };
+    document.getElementById('msgPopup').classList.remove('hidden');
+  }
+
+  // Fix 4: showPopup / closePopup / showToast defined locally in admin
+  // (auth-guard.js versions require DOM elements that may not exist here)
+  function showPopup(title, msg, type) {
+    document.getElementById('popupTitle').textContent = title;
+    const body = document.getElementById('popupBody');
+    body.textContent = msg;
+    body.className   = 'popup-body ' + (type || '');
+    document.getElementById('confirmBtn').style.display = 'none';
+    document.getElementById('msgPopup').classList.remove('hidden');
+  }
+
+  function closePopup() {
+    document.getElementById('msgPopup').classList.add('hidden');
+  }
+
+  function showToast(msg, duration) {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.remove('hidden');
+    clearTimeout(window._adminToast);
+    window._adminToast = setTimeout(() => t.classList.add('hidden'), duration || 3500);
+  }
+
+  // Fix 5: authFetch wrapper for admin — handles JWT expiry
+  async function adminFetch(url, options) {
+    const res = await fetch(url, options || {});
+    if (res.status === 401) {
+      showPopup('Session Expired', 'Your admin session has expired. Please log in again.', 'error');
+      setTimeout(() => { window.location.href = 'login.html'; }, 2500);
+      return null;
+    }
+    return res;
+  }
+</script>
+</body>
+</html>

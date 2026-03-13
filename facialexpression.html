@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noai, noimageai">
+  <meta name="copyright" content="TeenagerPlaybook. All rights reserved.">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facial Expressions — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- AI Model Stack -->
+  <!-- 1. face-api.js — TinyFaceDetector + SSD MobileNet + expression nets -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <!-- Environment checker -->
+  <script src="js/env-check.js"></script>
+  <!-- 2. MediaPipe Face Mesh — 468 geometric landmarks for structural analysis -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+  <style>
+    .ai-status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .ai-status-chip {
+      background: rgba(20,10,4,0.6);
+      border: 1px solid var(--wood-mid);
+      border-radius: 8px;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    .ai-status-chip .chip-name  { font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:0.06em; color:var(--text-dim); display:block; margin-bottom:3px; }
+    .ai-status-chip .chip-score { font-family:'Cinzel',serif; font-size:0.88rem; color:var(--gold); }
+    .ai-status-chip .chip-sub   { font-family:'Libre Baskerville',serif; font-size:0.62rem; color:var(--text-dim); font-style:italic; display:block; margin-top:2px; }
+    .ai-status-chip.active  { border-color: var(--gold-dim); }
+    .ai-status-chip.loading { border-color: #8b6020; }
+    .ai-status-chip.failed  { border-color: #6b2020; opacity:0.5; }
+    .composite-label { font-family:'Cinzel',serif; font-size:0.7rem; color:var(--gold-dim); letter-spacing:0.1em; text-align:center; margin-bottom:4px; }
+  </style>
+</head>
+<body>
+
+<script src="js/auth-guard.js"></script>
+<script>const _sess = requireAuth();</script>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="history.html">History</a>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+  <p class="title-main">Facial Expressions</p>
+  <p class="title-sub">Your face reveals what words cannot hide</p>
+  <hr class="gold-rule">
+
+  <div class="wood-panel mb-24">
+    <h3 class="panel-label">📋 How This Session Works</h3>
+    <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.8;">
+      Watch the instructional video — it pauses at expression checkpoints. <strong style="color:var(--gold);">Three AI systems</strong> evaluate your face simultaneously: TinyFaceDetector (fast emotion probabilities), SSD MobileNet (high-accuracy detection), and MediaPipe Face Mesh (468-point geometric analysis of genuine vs forced expression). Their scores combine into one result. Reach <strong style="color:var(--gold);">80%</strong> to pass.
+    </p>
+    <div class="check-row mt-16">
+      <input type="checkbox" id="camPermCheck">
+      <label for="camPermCheck" style="color:var(--text-muted);font-size:0.88rem;">
+        I allow camera access — facial data is processed entirely in the browser, never stored.
+      </label>
+    </div>
+  </div>
+
+
+  <!-- CDN offline warning — shown automatically if AI libraries fail to load -->
+  <div id="cdnWarningBanner" style="display:none;background:rgba(80,20,10,0.5);border:1px solid rgba(180,60,40,0.5);border-radius:10px;padding:12px 18px;margin-bottom:16px;text-align:center;">
+    <p style="font-family:'Cinzel',serif;font-size:0.78rem;color:#e08060;letter-spacing:0.06em;margin-bottom:4px;">⚠ AI LIBRARIES UNAVAILABLE</p>
+    <p style="font-family:'Libre Baskerville',serif;font-size:0.82rem;color:var(--text-muted);line-height:1.5;">Could not reach cdn.jsdelivr.net. AI models are offline — exercises will run in fallback scoring mode. Check your internet connection and reload for full accuracy.</p>
+  </div>
+
+  <!-- ── Environment Check Popup ── -->
+  <div class="popup-overlay" id="envCheckPopup">
+    <div class="popup-box wood-panel env-popup-box">
+      <p class="popup-title" style="margin-bottom:6px;">Before You Begin — Facial Expression Session</p>
+      <div style="font-family:'Libre Baskerville',serif;font-size:0.85rem;color:var(--text-muted);text-align:left;margin-bottom:16px;line-height:1.8;">
+        <p style="margin-bottom:8px;font-family:'IM Fell English',serif;font-style:italic;color:var(--gold-dim);">What this session requires:</p>
+        <p>📷 <strong style="color:var(--text-main);">Camera access</strong> — your face is analysed in real time. Video never leaves your browser.</p>
+        <p>🤖 <strong style="color:var(--text-main);">AI face analysis</strong> — TinyFaceDetector, SSD MobileNet, and MediaPipe Face Mesh evaluate your expressions simultaneously.</p>
+        <p>💡 <strong style="color:var(--text-main);">Good lighting</strong> — face a light source (window or lamp in front of you). Do not sit with a bright window behind you.</p>
+        <p>🪑 <strong style="color:var(--text-main);">Seated, face visible</strong> — sit upright with your face clearly visible and centred in camera. Keep your full face in frame.</p>
+        <p>😶 <strong style="color:var(--text-main);">Clear face</strong> — remove glasses if possible, keep hair away from face for best landmark tracking.</p>
+        <p style="margin-top:10px;">You need <strong style="color:var(--gold);">80% or above</strong> to pass each exercise. Exercise 3 requires holding a Duchenne smile for <strong style="color:var(--gold);">15 seconds</strong> continuously.</p>
+      </div>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:0.88rem;color:var(--text-muted);text-align:center;margin-bottom:18px;">Now checking your camera and lighting…</p>
+      <div id="envStatus" class="env-status-msg env-status-loading"><span class="env-status-icon">⏳</span> Checking…</div>
+      <div id="envChecklist" class="env-checklist"></div>
+      <div id="envAdvice" style="margin-bottom:16px;"></div>
+      <div class="popup-actions">
+        <button class="btn btn-primary"   id="envStartBtn" style="display:none;">Begin Session ✦</button>
+        <button class="btn btn-secondary" id="envRetryBtn" style="display:none;">Re-check</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="video-wrap">
+    <video id="mainVideo" preload="metadata" playsinline>
+      <source src="https://docs.google.com/uc?export=download&id=1kDvZ0-Lvtu6b4_FyJivQ46soN3puazLR" type="video/mp4">
+    </video>
+    <div class="video-no-src" id="videoPlaceholder" style="display:none;">
+      <p>Video not yet uploaded. Admin Panel → Upload Video → Facial Expressions.</p>
+    </div>
+
+    <div class="exercise-overlay hidden" id="exerciseOverlay">
+      <p class="exercise-msg" id="exerciseTitle">⏸ Expression Exercise</p>
+      <p class="exercise-sub" id="exerciseInstruction">Follow the instructions from the video.</p>
+      <p style="font-family:'Libre Baskerville',serif;font-size:0.82rem;color:var(--gold-dim);margin-bottom:8px;padding:8px 12px;background:rgba(40,20,8,0.5);border-radius:8px;border:1px solid rgba(180,130,40,0.2);max-width:380px;text-align:center;" id="popupNoteEl"></p>
+      <div id="holdTimerWrap" style="display:none;font-family:'Cinzel',serif;font-size:1.4rem;color:var(--gold);text-align:center;margin-bottom:8px;">
+        Hold: <span id="holdTimerCount">15</span>s
+      </div>
+
+      <!-- Camera + mesh canvas -->
+      <div style="position:relative;display:inline-block;">
+        <video id="camFeed" autoplay playsinline muted></video>
+        <canvas id="aiCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:10px;"></canvas>
+      </div>
+
+      <!-- AI Status chips -->
+      <div class="ai-status-grid">
+        <div class="ai-status-chip loading" id="chip-tiny">
+          <span class="chip-name">TinyFace</span>
+          <span class="chip-score" id="score-tiny">…</span>
+          <span class="chip-sub" id="sub-tiny">loading</span>
+        </div>
+        <div class="ai-status-chip loading" id="chip-ssd">
+          <span class="chip-name">SSD MobileNet</span>
+          <span class="chip-score" id="score-ssd">…</span>
+          <span class="chip-sub" id="sub-ssd">loading</span>
+        </div>
+        <div class="ai-status-chip loading" id="chip-mesh">
+          <span class="chip-name">Face Mesh</span>
+          <span class="chip-score" id="score-mesh">…</span>
+          <span class="chip-sub" id="sub-mesh">landmarks</span>
+        </div>
+      </div>
+
+      <!-- Target + detected -->
+      <div style="background:rgba(20,10,4,0.6);border:1px solid var(--gold-dim);border-radius:10px;padding:8px 14px;max-width:320px;">
+        <p style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--gold-dim);letter-spacing:0.08em;margin-bottom:4px;">TARGET → DETECTED</p>
+        <p style="font-family:'Libre Baskerville',serif;font-size:0.82rem;color:var(--text-muted);line-height:1.5;" id="aiEvalDesc">—</p>
+        <p style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--text-dim);margin-top:5px;">
+          Tiny: <span id="tinyDetected" style="color:var(--gold);">—</span> &nbsp;|&nbsp;
+          SSD: <span id="ssdDetected" style="color:var(--gold);">—</span>
+        </p>
+      </div>
+
+      <!-- Composite bar -->
+      <div class="accuracy-bar-wrap">
+        <p class="composite-label">COMPOSITE SCORE</p>
+        <p class="accuracy-label">Expression Match: <span id="accuracyValue">0%</span></p>
+        <div class="accuracy-bar"><div class="accuracy-fill" id="accuracyFill"></div></div>
+        <p style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--text-dim);text-align:center;margin-top:4px;letter-spacing:0.06em;">PASS THRESHOLD: 80%</p>
+      </div>
+
+      <p class="exercise-sub" id="exerciseFeedback" style="color:var(--gold);">Look at the camera and hold the expression…</p>
+
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="replayInstructions()">↩ Replay Instructions</button>
+        <button class="btn btn-primary" id="tryAgainBtn" onclick="retryExercise()" style="display:none;">Try Again</button>
+        <button class="btn btn-secondary" onclick="skipExercise()">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wood-panel mt-24">
+    <h3 class="panel-label">Session Progress</h3>
+    <div class="stat-row">
+      <div class="stat-item"><span class="stat-num" id="trialCount">0</span><span class="stat-name">Trials</span></div>
+      <div class="stat-item"><span class="stat-num" id="passCount">0</span><span class="stat-name">Passed</span></div>
+      <div class="stat-item"><span class="stat-num" id="avgAccuracy">—</span><span class="stat-name">Avg Score</span></div>
+    </div>
+  </div>
+</div>
+
+  <!-- ── Session Resume Popup ── -->
+  <div class="popup-overlay hidden" id="resumePopup">
+    <div class="popup-box wood-panel">
+      <p class="popup-title">Resume Session?</p>
+      <p class="popup-body" id="resumeMsg">You left this session partway through. Would you like to continue from where you stopped?</p>
+      <div class="popup-actions">
+        <button class="btn btn-primary"   onclick="resumeSession()">Resume ✦</button>
+        <button class="btn btn-secondary" onclick="startFresh()">Start from Beginning</button>
+      </div>
+    </div>
+  </div>
+<div class="popup-overlay hidden" id="congratsPopup">
+  <div class="popup-box wood-panel congrats-pop">
+    <p class="confetti-line">🌟 ✦ 🌟</p>
+    <p class="popup-title">Expression Mastered!</p>
+    <p class="popup-body success" id="congratsMsg">All AI models confirmed a genuine, compelling expression!</p>
+    <p class="popup-body" id="congratsDetail" style="font-size:1rem;color:var(--gold);font-family:'IM Fell English',serif;font-style:italic;margin-top:4px;"></p>
+    <p class="popup-body" style="font-size:0.82rem;color:var(--text-muted);">The video will continue when you're ready.</p>
+    <div class="popup-actions">
+      <button class="btn btn-primary" onclick="continueVideo()">Continue Video →</button>
+    </div>
+  </div>
+</div>
+
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions"><button class="btn btn-secondary" onclick="closePopup()">Close</button></div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CHECKPOINT CONFIGURATION
+//
+//  emotion: 'happy' | 'neutral' | 'sad' | 'angry' | 'surprised' | 'fearful' | 'disgusted'
+//  meshCheck: what the Face Mesh geometry verifier looks for:
+//    'smile'       → lip corner elevation + cheek raise (Duchenne smile)
+//    'action_units'→ 5+ action units active (complex expression)
+//    'duchenne_hold'→ Duchenne smile held for 15 seconds
+// ═══════════════════════════════════════════════════════════════
+const CHECKPOINTS = [
+  {
+    time:       177,   // 2min 57sec
+    replayTime: 163,
+    name:       'Exercise 1 — Complex Expression',
+    instruction:'Squeeze your face — use as many different facial muscles as you can simultaneously.',
+    popupNote:  'Activate 5+ action units: brow raise, nose scrunch, cheek puff, lip compress, eye squint — all at once.',
+    aiEval:     '5+ action units active · complex multi-muscle expression',
+    emotion:    'surprised',
+    meshCheck:  'action_units',
+    holdSeconds: 0
+  },
+  {
+    time:       309,   // 5min 9sec
+    replayTime: 295,
+    name:       'Exercise 2 — Duchenne Smile',
+    instruction:'Smile with both your lips AND your eyes — a genuine Duchenne smile.',
+    popupNote:  'Smile with lips and eyes. Your cheeks should lift and your eye corners should crinkle.',
+    aiEval:     'happy expression · lip corners raised · cheek elevation · eye crinkle (Duchenne)',
+    emotion:    'happy',
+    meshCheck:  'smile',
+    holdSeconds: 0
+  },
+  {
+    time:       383,   // 6min 23sec
+    replayTime: 369,
+    name:       'Exercise 3 — Hold the Duchenne Smile',
+    instruction:'Smile with both your lips and your eyes — then hold it for 15 seconds.',
+    popupNote:  'Smile with lips and eyes — then hold it. The timer will count down 15 seconds.',
+    aiEval:     'Duchenne smile sustained for 15 seconds · no breaking · consistent cheek and eye engagement',
+    emotion:    'happy',
+    meshCheck:  'smile',
+    holdSeconds: 15
+  }
+];
+
+const PASS_THRESHOLD = 80;
+const SESSION_TYPE   = 'facialexpression';
+const MODELS_URL     = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/';
+
+// ── Model state — weights sum to 1.0 ──
+const models = {
+  tiny: { loaded: false, score: 0, weight: 0.35 },  // fast, real-time emotion probabilities
+  ssd:  { loaded: false, score: 0, weight: 0.40 },  // more accurate, larger model
+  mesh: { loaded: false, score: 0, weight: 0.25 }   // geometric verification
+};
+
+let trials = [], camStream = null, meshInstance = null, meshCamera = null;
+let currentAccuracy = 0, detectInterval = null;
+let nextCheckpoint = 0, exerciseActive = false;
+let meshLandmarks = null;
+
+const video    = document.getElementById('mainVideo');
+const overlay  = document.getElementById('exerciseOverlay');
+const camFeed  = document.getElementById('camFeed');
+const aiCanvas = document.getElementById('aiCanvas');
+const aiCtx    = aiCanvas.getContext('2d');
+
+// ── Pre-load face-api models in background ──
+window.addEventListener('load', async () => {
+  try {
+    // Load all four nets in parallel
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL),
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODELS_URL),
+      faceapi.nets.faceExpressionNet.loadFromUri(MODELS_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URL)
+    ]);
+    models.tiny.loaded = true;
+    models.ssd.loaded  = true;
+    console.log('✦ face-api.js models loaded (TinyFace + SSD + Expressions + Landmarks)');
+  } catch(e) {
+    console.warn('face-api partial load:', e.message);
+    // Try loading just the ones that worked
+    try { models.tiny.loaded = faceapi.nets.tinyFaceDetector.isLoaded; } catch(_) {}
+    try { models.ssd.loaded  = faceapi.nets.ssdMobilenetv1.isLoaded;  } catch(_) {}
+  }
+});
+
+video.addEventListener('error', () => {
+  document.getElementById('videoPlaceholder').style.display = 'flex';
+  video.style.display = 'none';
+});
+video.addEventListener('timeupdate', () => {
+  if (exerciseActive || nextCheckpoint >= CHECKPOINTS.length) return;
+  // Only trigger the CURRENT checkpoint — never look back at passed ones
+  // This prevents replayInstructions() from re-triggering earlier checkpoints
+  const cp = CHECKPOINTS[nextCheckpoint];
+  if (video.currentTime >= cp.time && video.currentTime <= cp.time + 1.5) {
+    video.pause();
+    startExercise(nextCheckpoint);
+  }
+});
+
+async function startExercise(idx) {
+  exerciseActive = true;
+  const cp = CHECKPOINTS[idx];
+  document.getElementById('exerciseTitle').textContent       = '⏸ ' + cp.name;
+  document.getElementById('exerciseInstruction').textContent = cp.instruction;
+  document.getElementById('popupNoteEl').textContent         = cp.popupNote || '';
+  document.getElementById('aiEvalDesc').textContent          = cp.aiEval;
+  document.getElementById('exerciseFeedback').textContent    = 'Look at the camera and hold the expression…';
+  document.getElementById('tinyDetected').textContent        = '—';
+  document.getElementById('ssdDetected').textContent         = '—';
+  document.getElementById('tryAgainBtn').style.display       = 'none';
+  // Hold timer setup
+  const holdWrap = document.getElementById('holdTimerWrap');
+  if (cp.holdSeconds > 0) {
+    holdWrap.style.display = 'block';
+    document.getElementById('holdTimerCount').textContent = cp.holdSeconds;
+  } else {
+    holdWrap.style.display = 'none';
+  }
+  resetChips();
+  setAccuracy(0);
+  meshLandmarks = null;
+  overlay.classList.remove('hidden');
+
+  if (!document.getElementById('camPermCheck').checked) {
+    document.getElementById('exerciseFeedback').textContent = 'Please tick the camera consent checkbox above first.';
+    return;
+  }
+  await startCamera();
+  initFaceMesh();
+  startDetection(idx);
+}
+
+async function startCamera() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    camFeed.srcObject = camStream;
+    await camFeed.play();
+    aiCanvas.width  = camFeed.videoWidth  || 640;
+    aiCanvas.height = camFeed.videoHeight || 480;
+  } catch(e) {
+    showPopup('Camera Denied', 'Please allow camera access in your browser settings.', 'error');
+  }
+}
+
+function stopCamera() {
+  if (camStream)    { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (meshInstance) { meshInstance.close(); meshInstance = null; }
+  if (meshCamera)   { meshCamera = null; }
+  clearInterval(detectInterval);
+  clearInterval(_autoSaveInterval); // Fix 3
+}
+
+// ── MediaPipe Face Mesh init ──
+function initFaceMesh() {
+  try {
+    meshInstance = new FaceMesh({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+    });
+    meshInstance.setOptions({
+      maxNumFaces:            1,
+      refineLandmarks:        true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence:  0.5
+    });
+    meshInstance.onResults(results => {
+      meshLandmarks = (results.multiFaceLandmarks && results.multiFaceLandmarks[0]) || null;
+      models.mesh.loaded = true;
+
+      // Draw subtle mesh overlay
+      aiCtx.save();
+      aiCtx.clearRect(0, 0, aiCanvas.width, aiCanvas.height);
+      if (meshLandmarks) {
+        // Draw just the face contour + key feature points — not all 468 (would be visually noisy)
+        const scaleX = aiCanvas.width;
+        const scaleY = aiCanvas.height;
+        aiCtx.strokeStyle = 'rgba(212,168,67,0.35)';
+        aiCtx.lineWidth   = 1;
+        aiCtx.fillStyle   = 'rgba(212,168,67,0.6)';
+
+        // Key feature points: eyes, nose tip, mouth corners, jaw
+        const keyPoints = [1, 33, 263, 61, 291, 199, 10, 152, 234, 454, 130, 359, 78, 308];
+        keyPoints.forEach(i => {
+          if (!meshLandmarks[i]) return;
+          aiCtx.beginPath();
+          aiCtx.arc(meshLandmarks[i].x * scaleX, meshLandmarks[i].y * scaleY, 2.5, 0, 2*Math.PI);
+          aiCtx.fill();
+        });
+      }
+      aiCtx.restore();
+    });
+
+    meshCamera = new Camera(camFeed, {
+      onFrame: async () => { if (meshInstance) await meshInstance.send({ image: camFeed }); },
+      width: 640, height: 480
+    });
+    meshCamera.start();
+  } catch(e) {
+    console.warn('Face Mesh failed:', e.message);
+    setChipFailed('mesh');
+  }
+}
+
+// ── Main detection loop — runs every 500ms ──
+function startDetection(idx) {
+  let elapsed = 0;
+  const cp = CHECKPOINTS[idx];
+
+  detectInterval = setInterval(async () => {
+    elapsed += 0.5;
+
+    // 1. TinyFaceDetector — fast, every frame
+    if (models.tiny.loaded && camFeed.readyState === 4) {
+      try {
+        const det = await faceapi
+          .detectSingleFace(camFeed, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
+          .withFaceExpressions();
+
+        if (det) {
+          const tinyScore = Math.round((det.expressions[cp.emotion] || 0) * 100);
+          models.tiny.score = tinyScore;
+          const dom = Object.entries(det.expressions).sort((a,b)=>b[1]-a[1])[0];
+          document.getElementById('tinyDetected').textContent = dom[0] + ' ' + Math.round(dom[1]*100) + '%';
+          setChipActive('tiny', tinyScore, dom[0]);
+        } else {
+          models.tiny.score = 0;
+          document.getElementById('tinyDetected').textContent = 'no face';
+          setChipActive('tiny', 0, 'none');
+        }
+      } catch(e) { /* skip frame */ }
+    }
+
+    // 2. SSD MobileNet — more accurate but slightly slower; run every other frame
+    if (models.ssd.loaded && camFeed.readyState === 4 && Math.round(elapsed * 2) % 2 === 0) {
+      try {
+        const det = await faceapi
+          .detectSingleFace(camFeed, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
+          .withFaceExpressions();
+
+        if (det) {
+          const ssdScore = Math.round((det.expressions[cp.emotion] || 0) * 100);
+          models.ssd.score = ssdScore;
+          const dom = Object.entries(det.expressions).sort((a,b)=>b[1]-a[1])[0];
+          document.getElementById('ssdDetected').textContent = dom[0] + ' ' + Math.round(dom[1]*100) + '%';
+          // Draw face bounding box from SSD (most accurate box)
+          drawFaceBox(det.detection.box, ssdScore);
+          setChipActive('ssd', ssdScore, dom[0]);
+        } else {
+          models.ssd.score = 0;
+          document.getElementById('ssdDetected').textContent = 'no face';
+        }
+      } catch(e) { /* skip frame */ }
+    }
+
+    // 3. Face Mesh geometric verification
+    if (models.mesh.loaded && meshLandmarks) {
+      const meshScore = scoreFaceMesh(meshLandmarks, cp.meshCheck);
+      models.mesh.score = meshScore;
+      setChipActive('mesh', meshScore, cp.meshCheck);
+    } else if (!models.mesh.loaded) {
+      setChipFailed('mesh');
+    }
+
+    // Composite score
+    const composite = computeComposite();
+    currentAccuracy = composite;
+    setAccuracy(composite);
+    updateFeedback(composite, cp.emotion, cp.meshCheck);
+
+    // Hold timer logic for Exercise 3 (holdSeconds > 0)
+    if (cp.holdSeconds > 0 && composite >= PASS_THRESHOLD) {
+      if (!window._holdStart) window._holdStart = elapsed;
+      const held = elapsed - window._holdStart;
+      const remaining = Math.max(0, cp.holdSeconds - Math.floor(held));
+      document.getElementById('holdTimerCount').textContent = remaining;
+      document.getElementById('exerciseFeedback').textContent =
+        held >= cp.holdSeconds ? '✦ Hold confirmed!' : 'Holding… keep smiling with your eyes too!';
+      if (held >= cp.holdSeconds) {
+        clearInterval(detectInterval);
+        window._holdStart = null;
+        onPassed();
+      }
+    } else {
+      if (cp.holdSeconds > 0) { window._holdStart = null; document.getElementById('holdTimerCount').textContent = cp.holdSeconds; }
+      if (composite >= PASS_THRESHOLD && elapsed >= 2 && !cp.holdSeconds) {
+        clearInterval(detectInterval);
+        onPassed();
+      }
+    }
+
+    if (elapsed >= 60) {
+      clearInterval(detectInterval);
+      window._holdStart = null;
+      onFailed();
+    }
+  }, 500);
+}
+
+function drawFaceBox(box, score) {
+  // Face Mesh canvas is already being drawn — draw box on top
+  const scaleX = aiCanvas.width  / camFeed.videoWidth;
+  const scaleY = aiCanvas.height / camFeed.videoHeight;
+  aiCtx.strokeStyle = score >= PASS_THRESHOLD ? 'rgba(80,200,80,0.85)' : 'rgba(212,168,67,0.7)';
+  aiCtx.lineWidth   = 2;
+  aiCtx.strokeRect(box.x*scaleX, box.y*scaleY, box.width*scaleX, box.height*scaleY);
+}
+
+// ──────────────────────────────────────────────
+// FACE MESH GEOMETRIC SCORING
+// Uses MediaPipe's 468 landmarks to measure facial geometry
+// independently of neural expression classification
+// ──────────────────────────────────────────────
+function scoreFaceMesh(lm, check) {
+  if (!lm || lm.length < 468) return 0;
+
+  // Key MediaPipe Face Mesh landmark indices:
+  // Mouth corners: 61 (left), 291 (right)
+  // Upper lip centre: 13 | Lower lip centre: 14
+  // Left eye corners: 33, 133 | Right eye corners: 362, 263
+  // Left eye upper lid: 159 | Left eye lower lid: 145
+  // Right eye upper lid: 386 | Right eye lower lid: 374
+  // Inner brow left: 46 | Inner brow right: 276
+  // Outer brow left: 70 | Outer brow right: 300
+  // Nose tip: 1 | Chin: 152 | Forehead: 10
+
+  const p  = i => lm[i];
+  const dy = (a, b) => p(a).y - p(b).y;  // positive = a is lower than b
+  const dx = (a, b) => Math.abs(p(a).x - p(b).x);
+
+  // Face height (for normalisation)
+  const faceH = Math.abs(p(10).y - p(152).y) || 0.3;
+  const norm  = v => v / faceH;
+
+  if (check === 'smile') {
+    // Measure: lip corner elevation relative to centre lip
+    // When smiling: corners (61, 291) rise above centre (13)
+    const leftCornerUp   = dy(13, 61);   // positive = corner above centre
+    const rightCornerUp  = dy(13, 291);
+    // Cheek raise — eye lower lid rises when smiling genuinely (Duchenne)
+    const leftEyeSquint  = dy(159, 145); // narrowing = positive
+    const rightEyeSquint = dy(386, 374);
+    // Mouth openness (happy smiles often show teeth)
+    const mouthOpen      = dy(13, 14);   // lower lip below upper
+
+    let s = 0;
+    s += norm(leftCornerUp)   > 0.03 ? 22 : norm(leftCornerUp)   > 0.01 ? 12 : 2;
+    s += norm(rightCornerUp)  > 0.03 ? 22 : norm(rightCornerUp)  > 0.01 ? 12 : 2;
+    s += norm(leftEyeSquint)  < 0.04 ? 18 : norm(leftEyeSquint)  < 0.07 ? 10 : 3;  // squinted = narrow
+    s += norm(rightEyeSquint) < 0.04 ? 18 : norm(rightEyeSquint) < 0.07 ? 10 : 3;
+    s += norm(Math.abs(mouthOpen)) > 0.02 ? 10 : 5;
+    s += 10; // presence bonus
+    return Math.min(100, s);
+
+  } else if (check === 'neutral') {
+    // Neutral: minimal displacement of key features from baseline geometry
+    // Corners near centre line, eyes normally open, brows level
+    const cornerAsymmetry = Math.abs(dy(61, 291));        // corners at same height
+    const browHeight      = (dy(46,133) + dy(276,362)) / 2; // brows above eyes
+    const mouthOpen       = Math.abs(dy(13, 14));
+
+    let s = 0;
+    s += norm(cornerAsymmetry) < 0.02 ? 30 : norm(cornerAsymmetry) < 0.04 ? 18 : 5;
+    s += norm(browHeight)  > 0.04 && norm(browHeight) < 0.12 ? 30 : 15;  // normal brow position
+    s += norm(mouthOpen)   < 0.015 ? 25 : norm(mouthOpen) < 0.03 ? 15 : 5;  // closed or slightly open
+    s += 15; // presence bonus
+    return Math.min(100, s);
+
+  } else if (check === 'concern') {
+    // Concern/sad: inner brows rise (46, 276 move up), corners fall
+    const innerBrowRise  = dy(133, 46);   // inner brow above eye inner corner
+    const cornerDrop     = dy(61, 13);    // corner below centre = negative
+    const mouthTension   = Math.abs(dx(61, 291)); // mouth width may narrow
+
+    let s = 0;
+    s += norm(innerBrowRise) > 0.02 ? 35 : norm(innerBrowRise) > 0.005 ? 18 : 3;
+    s += norm(cornerDrop)   < 0 ? 30 : norm(cornerDrop) < 0.01 ? 14 : 4;  // corners below centre
+    s += norm(mouthTension) < 0.18 ? 20 : 10;  // slight mouth narrowing
+    s += 15; // presence bonus
+    return Math.min(100, s);
+
+  } else if (check === 'surprise') {
+    const browRise  = (dy(133,46) + dy(362,276)) / 2;
+    const eyeOpen   = (dy(159,145) + dy(386,374)) / 2;  // wide eyes
+    const mouthOpen = dy(13, 14);
+    let s = 0;
+    s += norm(browRise)  > 0.04 ? 30 : norm(browRise)  > 0.02 ? 15 : 3;
+    s += norm(eyeOpen)   > 0.05 ? 35 : norm(eyeOpen)   > 0.03 ? 20 : 5;
+    s += norm(Math.abs(mouthOpen)) > 0.03 ? 25 : 10;
+    s += 10;
+    return Math.min(100, s);
+
+  } else if (check === 'action_units') {
+    // Count how many distinct facial muscle groups are simultaneously activated
+    // Action units: brow raise, nose scrunch, cheek puff, lip compress, eye squint, jaw open, lip corner pull
+    const p  = i => lm[i];
+    const dy = (a, b) => p(a).y - p(b).y;
+    const dx = (a, b) => Math.abs(p(a).x - p(b).x);
+    const faceH = Math.abs(p(10).y - p(152).y) || 0.3;
+    const norm  = v => v / faceH;
+
+    let activeUnits = 0;
+    // AU1/2: Brow raise — inner/outer brow elevation
+    const browRaise = (dy(10, 46) + dy(10, 276)) / 2;
+    if (norm(browRaise) > 0.18) activeUnits++;
+    // AU4: Brow lowerer — brows converge
+    const browConverge = dx(46, 276);
+    if (norm(browConverge) < 0.09) activeUnits++;
+    // AU6: Cheek raiser — cheeks push up (eye narrowing)
+    const leftEyeOpen  = Math.abs(p(159).y - p(145).y);
+    const rightEyeOpen = Math.abs(p(386).y - p(374).y);
+    if (norm(leftEyeOpen) < 0.035 || norm(rightEyeOpen) < 0.035) activeUnits++;
+    // AU9: Nose wrinkler — nose tip displacement
+    const noseWrinkle = Math.abs(p(1).y - p(168).y);
+    if (norm(noseWrinkle) > 0.06) activeUnits++;
+    // AU12/13: Lip corner puller — corners rise
+    const leftCorner  = dy(13, 61);
+    const rightCorner = dy(13, 291);
+    if (norm(leftCorner) > 0.025 || norm(rightCorner) > 0.025) activeUnits++;
+    // AU20: Lip stretcher — mouth widens
+    const mouthWidth = dx(61, 291);
+    if (norm(mouthWidth) > 0.28) activeUnits++;
+    // AU26/27: Jaw drop — mouth opens
+    const jawOpen = Math.abs(p(13).y - p(14).y);
+    if (norm(jawOpen) > 0.04) activeUnits++;
+
+    // Need 5+ active units to pass (score scales 0–100 based on count)
+    const score = Math.min(100, Math.round((activeUnits / 5) * 85 + (activeUnits >= 5 ? 15 : 0)));
+    document.getElementById('exerciseFeedback').textContent =
+      activeUnits >= 5 ? `✦ ${activeUnits} action units detected — great!` :
+      `${activeUnits}/5 muscle groups active — squeeze more!`;
+    return score;
+
+  } else if (check === 'anger') {
+    // Brows descend and converge, lip compresses
+    const browLow      = (dy(46,133) + dy(276,362)) / 2;  // brows low over eyes
+    const browConverge = dx(46, 276);  // inner brows close together
+    const mouthCompress = dy(13, 14); // small value = compressed
+    let s = 0;
+    s += norm(Math.abs(browLow)) < 0.03 ? 35 : 12;  // brows close to eyes
+    s += norm(browConverge) < 0.08 ? 35 : norm(browConverge) < 0.12 ? 20 : 8;
+    s += norm(Math.abs(mouthCompress)) < 0.01 ? 20 : 8;
+    s += 10;
+    return Math.min(100, s);
+
+  } else {
+    return 50; // default mid score for unknown check type
+  }
+}
+
+function computeComposite() {
+  let totalW = 0, sum = 0;
+  for (const key of Object.keys(models)) {
+    const m = models[key];
+    if (m.loaded || m.score > 0) { sum += m.score * m.weight; totalW += m.weight; }
+  }
+  return totalW === 0 ? 0 : Math.round(Math.min(100, sum / totalW));
+}
+
+// ── UI helpers ──
+function setChipActive(name, score, sub) {
+  const chip = document.getElementById('chip-' + name);
+  if (chip) chip.className = 'ai-status-chip active';
+  const el = document.getElementById('score-' + name);
+  if (el) el.textContent = Math.round(score) + '%';
+  if (sub) {
+    const subEl = document.getElementById('sub-' + name);
+    if (subEl) subEl.textContent = sub;
+  }
+}
+function setChipFailed(name) {
+  const chip = document.getElementById('chip-' + name);
+  if (chip) chip.className = 'ai-status-chip failed';
+  const el = document.getElementById('score-' + name);
+  if (el) el.textContent = 'N/A';
+}
+function resetChips() {
+  ['tiny','ssd','mesh'].forEach(n => {
+    const chip = document.getElementById('chip-' + n);
+    if (chip) chip.className = 'ai-status-chip loading';
+    const el = document.getElementById('score-' + n);
+    if (el) el.textContent = '…';
+  });
+}
+
+function setAccuracy(pct) {
+  pct = Math.max(0, Math.min(100, Math.round(pct)));
+  document.getElementById('accuracyValue').textContent = pct + '%';
+  document.getElementById('accuracyFill').style.width  = pct + '%';
+  document.getElementById('accuracyFill').style.background =
+    pct >= PASS_THRESHOLD ? 'linear-gradient(90deg,#60c060,#40a040)' :
+    pct >= 60             ? 'linear-gradient(90deg,var(--wood-honey),var(--gold))' :
+                            'linear-gradient(90deg,#8b4020,#c05030)';
+}
+
+function updateFeedback(acc, emotion, meshCheck) {
+  const el = document.getElementById('exerciseFeedback');
+  // action_units feedback is handled inside scoreFaceMesh directly
+  if (meshCheck === 'action_units') return;
+  if (acc === 0) { el.textContent = 'No face detected — look directly at your camera.'; return; }
+  const hints = {
+    happy:    ['Think of something genuinely joyful — let the smile reach your eyes.',
+               'Lift your cheek muscles — a real smile involves more than just the mouth.',
+               'Almost — let the warmth reach your eyes, not just your lips…',
+               '✦ Genuine, radiant smile confirmed!'],
+    surprised:['Raise your eyebrows high and widen your eyes.',
+               'Squeeze more muscles — brows up, nose scrunch, eyes squint, mouth wide.',
+               'More units! Try cheeks + brows + mouth + eyes all at once…',
+               '✦ Complex expression captured!'],
+  };
+  const set = hints[emotion] || ['Adjust your expression…','Getting there…','Hold steady…','✦ Expression matched!'];
+  if      (acc < 35) el.textContent = set[0];
+  else if (acc < 60) el.textContent = set[1];
+  else if (acc < PASS_THRESHOLD) el.textContent = set[2];
+  else               el.textContent = set[3];
+}
+
+// ── Encourage popup — shown on fail, auto-retries ──
+function showEncourageAndRetry() {
+  const el = document.getElementById('exerciseFeedback');
+  el.textContent = '💪 Come on, you can do it! Try again…';
+  el.style.color = 'var(--gold)';
+  document.getElementById('tryAgainBtn').style.display = 'none';
+  window._holdStart = null;
+  setTimeout(() => {
+    el.style.color = '';
+    meshLandmarks = null;
+    setAccuracy(0); resetChips();
+    startDetection(nextCheckpoint);
+  }, 2200);
+}
+
+// ── Pass / Fail ──
+function onPassed() {
+  const msgs = [
+    'All three AI systems confirmed a genuine, compelling expression!',
+    'Face Mesh geometry and both neural networks agreed — outstanding!',
+    'Remarkable — your expression scored 80%+ across all evaluators.',
+    'Brilliant facial awareness — every muscle told the right story.'
+  ];
+  document.getElementById('congratsMsg').textContent = msgs[Math.floor(Math.random()*msgs.length)];
+  document.getElementById('congratsDetail').textContent = 'Wow, that is amazing! ✦';
+  recordTrial(currentAccuracy, true);
+  stopCamera();
+  overlay.classList.add('hidden');
+  document.getElementById('congratsPopup').classList.remove('hidden');
+}
+function onFailed() {
+  recordTrial(currentAccuracy, false);
+  showEncourageAndRetry();
+}
+function retryExercise() {
+  document.getElementById('tryAgainBtn').style.display = 'none';
+  meshLandmarks = null;
+  window._holdStart = null;
+  setAccuracy(0); resetChips();
+  startDetection(nextCheckpoint);
+}
+function replayInstructions() {
+  stopCamera(); overlay.classList.add('hidden');
+  exerciseActive = false; clearInterval(detectInterval);
+  meshLandmarks = null;
+  video.currentTime = CHECKPOINTS[nextCheckpoint].replayTime;
+  video.play();
+  showToast('Replaying instructions — exercise will pause again when reached.');
+}
+function skipExercise() {
+  stopCamera(); overlay.classList.add('hidden');
+  exerciseActive = false; nextCheckpoint++; video.play();
+}
+function continueVideo() {
+  document.getElementById('congratsPopup').classList.add('hidden');
+  exerciseActive = false; nextCheckpoint++; video.play();
+}
+function recordTrial(accuracy, passed) {
+  trials.push({ accuracy, passed });
+  document.getElementById('trialCount').textContent  = trials.length;
+  document.getElementById('passCount').textContent   = trials.filter(x=>x.passed).length;
+  document.getElementById('avgAccuracy').textContent = Math.round(trials.reduce((s,x)=>s+x.accuracy,0)/trials.length)+'%';
+  const history = JSON.parse(localStorage.getItem('tp_history')||'[]');
+  history.push({ type: SESSION_TYPE, accuracy, passed, timestamp: new Date().toISOString() });
+  localStorage.setItem('tp_history', JSON.stringify(history));
+  authFetch(API_BASE + '/history',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:SESSION_TYPE,accuracy,passed})}).catch(()=>{});
+}
+
+  const SESSION_KEY = 'facialexpression';
+
+  // Fix 1: preventPlay stored at module scope so removeEventListener can detach it
+  let _mainVideo = null;
+  function _preventVideoPlay(e) {
+    e.preventDefault();
+    if (_mainVideo) _mainVideo.pause();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    _mainVideo = document.getElementById('mainVideo');
+    _mainVideo.controls = false;
+    _mainVideo.addEventListener('play', _preventVideoPlay);
+
+    runEnvironmentCheck('camera', () => {
+      _mainVideo.removeEventListener('play', _preventVideoPlay);
+      _mainVideo.controls = true;
+      // Check for saved progress
+      const saved = loadSessionProgress(SESSION_KEY);
+      if (saved && saved.checkpointIndex > 0) {
+        document.getElementById('resumeMsg').textContent =
+          'You reached checkpoint ' + saved.checkpointIndex + ' last time. Resume from there?';
+        document.getElementById('resumePopup').classList.remove('hidden');
+      }
+    });
+  });
+
+  // CDN offline detection — show warning if key libraries aren't loaded after 8s
+  setTimeout(() => {
+    const isCameraPage = document.getElementById('camFeed') !== null;
+    const isMicPage    = document.getElementById('waveformCanvas') !== null;
+    let missing = false;
+    if (isCameraPage) {
+      if (typeof Pose === 'undefined' && typeof faceapi === 'undefined' && typeof FaceMesh === 'undefined') missing = true;
+    }
+    // Mic page uses only Web Audio API — always available, no CDN needed
+    if (missing) {
+      const banner = document.getElementById('cdnWarningBanner');
+      if (banner) banner.style.display = 'block';
+    }
+  }, 8000);
+
+  // ── Fix 3: Session resume / auto-save ──
+  let _autoSaveInterval = null;
+
+  function startAutoSave() {
+    clearInterval(_autoSaveInterval);
+    _autoSaveInterval = setInterval(() => {
+      if (!exerciseActive && video.currentTime > 2) {
+        saveSessionProgress(SESSION_KEY, nextCheckpoint, video.currentTime);
+      }
+    }, 5000);
+  }
+
+  function resumeSession() {
+    const saved = loadSessionProgress(SESSION_KEY);
+    document.getElementById('resumePopup').classList.add('hidden');
+    if (saved) {
+      nextCheckpoint = saved.checkpointIndex;
+      video.currentTime = saved.videoTime;
+    }
+    video.play();
+    startAutoSave();
+  }
+
+  function startFresh() {
+    clearSessionProgress(SESSION_KEY);
+    document.getElementById('resumePopup').classList.add('hidden');
+    nextCheckpoint = 0;
+    video.currentTime = 0;
+    video.play();
+    startAutoSave();
+  }
+
+  // Clear progress when all checkpoints are done
+  video.addEventListener('ended', () => {
+    clearSessionProgress(SESSION_KEY);
+    clearInterval(_autoSaveInterval);
+  });
+</script>
+</body>
+</html>

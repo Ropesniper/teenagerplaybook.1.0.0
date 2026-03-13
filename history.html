@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noai, noimageai">
+  <meta name="copyright" content="TeenagerPlaybook. All rights reserved.">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<script src="js/auth-guard.js"></script>
+<script>const _sess = requireAuth();</script>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="history.html" class="active">History</a>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+  <p class="title-main">Practice History</p>
+  <p class="title-sub">Every trial is a step toward mastery</p>
+  <hr class="gold-rule">
+
+  <!-- Progress Circles -->
+  <h2 class="section-title mt-16">Session Accuracy Overview</h2>
+  <div class="history-grid">
+
+    <div class="wood-panel chart-card">
+      <canvas id="chartPostures"></canvas>
+      <p class="chart-label">Body Postures</p>
+      <div class="stat-row mt-8">
+        <div class="stat-item">
+          <span class="stat-num" id="p-trials">0</span>
+          <span class="stat-name">Trials</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="p-avg">—</span>
+          <span class="stat-name">Avg</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="p-pass">0</span>
+          <span class="stat-name">Passed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="wood-panel chart-card">
+      <canvas id="chartFacial"></canvas>
+      <p class="chart-label">Facial Expressions</p>
+      <div class="stat-row mt-8">
+        <div class="stat-item">
+          <span class="stat-num" id="f-trials">0</span>
+          <span class="stat-name">Trials</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="f-avg">—</span>
+          <span class="stat-name">Avg</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="f-pass">0</span>
+          <span class="stat-name">Passed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="wood-panel chart-card">
+      <canvas id="chartIntonation"></canvas>
+      <p class="chart-label">Intonation</p>
+      <div class="stat-row mt-8">
+        <div class="stat-item">
+          <span class="stat-num" id="i-trials">0</span>
+          <span class="stat-name">Trials</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="i-avg">—</span>
+          <span class="stat-name">Avg</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="i-pass">0</span>
+          <span class="stat-name">Passed</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Combined accuracy trend -->
+  <div class="wood-panel mb-24">
+    <h3 class="panel-label">Overall Accuracy Trend</h3>
+    <canvas id="chartTrend" style="max-height:200px;"></canvas>
+  </div>
+
+  <!-- Detailed history log -->
+  <h2 class="section-title">Detailed Session Log</h2>
+  <div id="historyLog">
+    <p class="muted text-center" id="emptyMsg">No sessions recorded yet. Complete exercises to see your history here.</p>
+  </div>
+
+  <div class="flex-center gap-12 mt-24">
+    <button class="btn btn-danger btn-sm" onclick="clearHistory()">Clear All History</button>
+  </div>
+</div>
+
+<!-- Popup -->
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions">
+      <button class="btn btn-secondary" onclick="closePopup()">Close</button>
+      <button class="btn btn-danger btn-sm" id="confirmBtn" style="display:none;" onclick="confirmClear()">Yes, Clear</button>
+    </div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+  // Chart defaults for antique theme
+  Chart.defaults.color = '#c8a87a';
+  Chart.defaults.font.family = 'Cinzel, serif';
+  Chart.defaults.font.size   = 11;
+
+  const CHART_DEFAULTS = {
+    borderColor:     '#d4a843',
+    backgroundColor: ['#d4a843', '#4a2e1a'],
+    borderWidth: 2,
+    cutout: '70%'
+  };
+
+  function makeDonut(canvasId, pct, label) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: [label, 'Remaining'],
+        datasets: [{
+          data: [pct, 100 - pct],
+          backgroundColor: ['#d4a843', 'rgba(40,20,10,0.6)'],
+          borderColor: ['#9c7a30', 'transparent'],
+          borderWidth: [2, 0],
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '72%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false },
+        },
+        animation: { animateRotate: true, duration: 900 }
+      },
+      plugins: [{
+        id: 'centerText',
+        beforeDraw(chart) {
+          const { ctx, chartArea: { top, bottom, left, right } } = chart;
+          const cx = (left+right)/2, cy = (top+bottom)/2;
+          ctx.save();
+          ctx.font = 'bold 22px Cinzel, serif';
+          ctx.fillStyle = '#d4a843';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(pct + '%', cx, cy);
+          ctx.restore();
+        }
+      }]
+    });
+  }
+
+  let charts = {};
+
+  function buildCharts(data) {
+    const types = {
+      bodypostures:     { label:'Body Postures',   ids:['p-trials','p-avg','p-pass'], chart:'chartPostures',   color:'#d4a843' },
+      facialexpression: { label:'Facial Expr.',    ids:['f-trials','f-avg','f-pass'], chart:'chartFacial',     color:'#a07040' },
+      intonation:       { label:'Intonation',      ids:['i-trials','i-avg','i-pass'], chart:'chartIntonation', color:'#c49a5a' },
+    };
+
+    Object.entries(types).forEach(([key, cfg]) => {
+      const entries = data.filter(e => e.type === key);
+      const trials  = entries.length;
+      const passed  = entries.filter(e => e.passed).length;
+      const avg     = trials ? Math.round(entries.reduce((s,e)=>s+e.accuracy,0)/trials) : 0;
+
+      document.getElementById(cfg.ids[0]).textContent = trials;
+      document.getElementById(cfg.ids[1]).textContent = trials ? avg+'%' : '—';
+      document.getElementById(cfg.ids[2]).textContent = passed;
+
+      if (charts[key]) charts[key].destroy();
+      charts[key] = makeDonut(cfg.chart, avg, cfg.label);
+    });
+  }
+
+  function buildTrendChart(data) {
+    if (!data.length) return;
+    const labels = data.map((_, i) => '#' + (i+1));
+    const values = data.map(e => e.accuracy);
+    const ctx = document.getElementById('chartTrend').getContext('2d');
+    if (charts.trend) charts.trend.destroy();
+    charts.trend = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Accuracy %',
+          data: values,
+          borderColor: '#d4a843',
+          backgroundColor: 'rgba(180,130,40,0.12)',
+          tension: 0.4,
+          pointBackgroundColor: '#d4a843',
+          pointRadius: 4,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            min: 0, max: 100,
+            ticks: { color:'#c8a87a', callback: v => v+'%' },
+            grid: { color:'rgba(100,60,20,0.2)' }
+          },
+          x: {
+            ticks: { color:'#c8a87a', maxTicksLimit: 10 },
+            grid: { color:'rgba(100,60,20,0.15)' }
+          }
+        },
+        plugins: { legend: { labels: { color:'#c8a87a' } } }
+      }
+    });
+  }
+
+  function buildLog(data) {
+    const log = document.getElementById('historyLog');
+    const empty = document.getElementById('emptyMsg');
+    if (!data.length) { empty.style.display = 'block'; log.innerHTML = ''; log.appendChild(empty); return; }
+    empty.style.display = 'none';
+
+    const typeLabels = {
+      bodypostures: '🧍 Body Postures',
+      facialexpression: '😊 Facial Expressions',
+      intonation: '🎙️ Intonation'
+    };
+
+    log.innerHTML = [...data].reverse().map((e, i) => `
+      <div class="wood-panel history-entry">
+        <div class="history-entry-head">
+          <span class="history-entry-type">${typeLabels[e.type] || e.type}</span>
+          <span class="history-entry-date">${new Date(e.timestamp).toLocaleString()}</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <span class="history-entry-acc">Accuracy: ${e.accuracy}%</span>
+          <span style="font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.06em;
+            color:${e.passed ? '#60c060' : '#c06060'};">
+            ${e.passed ? '✓ PASSED' : '✗ NOT PASSED'}
+          </span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function loadAll() {
+    const local = JSON.parse(localStorage.getItem('tp_history') || '[]');
+
+    // Try to merge with server data
+    const sess = getSession();
+    if (sess) {
+      authFetch(API_BASE + '/history', { headers:{} })
+        .then(r => r.json())
+        .then(serverData => {
+          const merged = [...local, ...serverData.filter(s =>
+            !local.find(l => l.timestamp === s.timestamp)
+          )];
+          buildCharts(merged);
+          buildTrendChart(merged);
+          buildLog(merged);
+        })
+        .catch(() => {
+          buildCharts(local);
+          buildTrendChart(local);
+          buildLog(local);
+        });
+    } else {
+      buildCharts(local);
+      buildTrendChart(local);
+      buildLog(local);
+    }
+  }
+
+  function clearHistory() {
+    document.getElementById('popupTitle').textContent  = 'Clear History';
+    document.getElementById('popupBody').textContent   = 'Are you sure you want to delete all local history? This cannot be undone.';
+    document.getElementById('popupBody').className     = 'popup-body warning';
+    document.getElementById('confirmBtn').style.display = 'inline-flex';
+    document.getElementById('msgPopup').classList.remove('hidden');
+  }
+
+  function confirmClear() {
+    localStorage.removeItem('tp_history');
+    closePopup();
+    loadAll();
+    showToast('History cleared.');
+  }
+
+  document.addEventListener('DOMContentLoaded', loadAll);
+</script>
+</body>
+</html>

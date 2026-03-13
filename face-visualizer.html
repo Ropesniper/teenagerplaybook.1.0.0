@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+  <meta name="robots" content="noai, noimageai">
+  <meta name="copyright" content="TeenagerPlaybook. All rights reserved.">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Face Detection — TeenagerPlaybook AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+<!-- AI Libraries -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+<style>
+  :root {
+    --wood-dark:    #1a0e06;
+    --wood-deep:    #2a1508;
+    --wood-mid:     #4a2810;
+    --wood-warm:    #6b3a18;
+    --wood-honey:   #8b5020;
+    --gold:         #d4a843;
+    --gold-light:   #e8c86a;
+    --gold-dim:     #a07828;
+    --gold-faint:   rgba(212,168,67,0.15);
+    --text:         #f0e8d8;
+    --text-muted:   #c8a878;
+    --text-dim:     #8b6840;
+    --scan-color:   rgba(80,200,120,0.7);
+    --mesh-color:   rgba(212,168,67,0.5);
+    --box-color:    rgba(212,168,67,0.9);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--wood-dark);
+    color: var(--text);
+    font-family: 'Libre Baskerville', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    background-image:
+      repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(212,168,67,0.015) 40px, rgba(212,168,67,0.015) 41px),
+      repeating-linear-gradient(0deg,  transparent, transparent 40px, rgba(212,168,67,0.015) 40px, rgba(212,168,67,0.015) 41px);
+  }
+
+  /* ── HEADER ── */
+  .header {
+    width: 100%;
+    padding: 20px 32px 16px;
+    border-bottom: 1px solid var(--gold-dim);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, rgba(42,21,8,0.95) 0%, rgba(26,14,6,0.8) 100%);
+    position: relative;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -3px; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .header-brand {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    letter-spacing: 0.18em;
+    color: var(--gold);
+    text-decoration: none;
+  }
+  .header-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #555;
+    transition: background 0.4s, box-shadow 0.4s;
+    flex-shrink: 0;
+  }
+  .status-dot.loading { background: var(--gold); animation: pulse 1s infinite; }
+  .status-dot.live    { background: #50d080; box-shadow: 0 0 8px rgba(80,208,128,0.6); animation: pulse 2s infinite; }
+  .status-dot.error   { background: #e05040; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    width: 100%;
+    max-width: 1100px;
+    padding: 28px 24px 40px;
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── CAMERA VIEWPORT ── */
+  .camera-viewport {
+    position: relative;
+    background: #000;
+    border: 1px solid var(--gold-dim);
+    border-radius: 4px;
+    overflow: hidden;
+    aspect-ratio: 4/3;
+    box-shadow: 0 0 60px rgba(0,0,0,0.8), inset 0 0 30px rgba(0,0,0,0.5);
+  }
+
+  /* Corner brackets — UI decoration */
+  .camera-viewport::before,
+  .camera-viewport::after {
+    content: '';
+    position: absolute;
+    width: 28px; height: 28px;
+    border-color: var(--gold);
+    border-style: solid;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .camera-viewport::before {
+    top: 12px; left: 12px;
+    border-width: 2px 0 0 2px;
+  }
+  .camera-viewport::after {
+    bottom: 12px; right: 12px;
+    border-width: 0 2px 2px 0;
+  }
+
+  /* Extra corner brackets via pseudo on inner wrapper */
+  .viewport-inner {
+    position: absolute; inset: 0;
+  }
+  .viewport-inner::before,
+  .viewport-inner::after {
+    content: '';
+    position: absolute;
+    width: 28px; height: 28px;
+    border-color: var(--gold);
+    border-style: solid;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .viewport-inner::before {
+    top: 12px; right: 12px;
+    border-width: 2px 2px 0 0;
+  }
+  .viewport-inner::after {
+    bottom: 12px; left: 12px;
+    border-width: 0 0 2px 2px;
+  }
+
+  #camVideo {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    transform: scaleX(-1); /* mirror */
+  }
+
+  /* Main overlay canvas — face mesh + boxes */
+  #overlayCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 5;
+    transform: scaleX(-1); /* mirror to match video */
+  }
+
+  /* Scan line animation */
+  .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--scan-color), transparent);
+    z-index: 6;
+    pointer-events: none;
+    animation: scan 3s linear infinite;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .scan-line.active { opacity: 1; }
+  @keyframes scan {
+    0%   { top: 0%; }
+    100% { top: 100%; }
+  }
+
+  /* HUD overlays */
+  .hud-top-left {
+    position: absolute;
+    top: 16px; left: 48px;
+    z-index: 8;
+    pointer-events: none;
+  }
+  .hud-bottom {
+    position: absolute;
+    bottom: 16px; left: 48px; right: 48px;
+    z-index: 8;
+    pointer-events: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .hud-text {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    color: rgba(212,168,67,0.7);
+    text-transform: uppercase;
+    line-height: 1.8;
+  }
+  .hud-expr {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    color: var(--gold-light);
+    text-transform: uppercase;
+    text-align: right;
+    transition: all 0.3s;
+  }
+  .hud-confidence {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 0.7rem;
+    color: rgba(212,168,67,0.6);
+    text-align: right;
+  }
+
+  /* Flash overlay for capture */
+  .flash-overlay {
+    position: absolute;
+    inset: 0;
+    background: white;
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.05s;
+  }
+  .flash-overlay.flash {
+    opacity: 0.9;
+    transition: opacity 0.05s;
+  }
+
+  /* No camera placeholder */
+  .no-cam {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(0,0,0,0.8);
+    z-index: 2;
+  }
+  .no-cam-icon { font-size: 2.5rem; opacity: 0.4; }
+  .no-cam p {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    text-align: center;
+    max-width: 200px;
+    line-height: 1.8;
+  }
+
+  /* ── CONTROLS BAR ── */
+  .controls-bar {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    border: 1px solid var(--gold-dim);
+    background: rgba(42,21,8,0.8);
+    color: var(--gold);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn:hover {
+    background: var(--gold-faint);
+    border-color: var(--gold);
+    color: var(--gold-light);
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-capture {
+    background: var(--gold-dim);
+    color: var(--wood-dark);
+    border-color: var(--gold);
+    font-weight: 600;
+    padding: 10px 28px;
+  }
+  .btn-capture:hover {
+    background: var(--gold);
+    color: var(--wood-dark);
+  }
+  .btn-capture:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Capture ripple effect */
+  .btn-capture::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .btn-capture.capturing::after { opacity: 0.3; }
+
+  /* ── SIDE PANEL ── */
+  .side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel-card {
+    background: linear-gradient(135deg, rgba(42,21,8,0.9) 0%, rgba(26,14,6,0.95) 100%);
+    border: 1px solid var(--gold-dim);
+    border-radius: 4px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  }
+
+  .panel-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(212,168,67,0.1);
+  }
+
+  /* Expression bars */
+  .expr-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .expr-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    width: 68px;
+    flex-shrink: 0;
+    text-transform: capitalize;
+  }
+  .expr-bar-wrap {
+    flex: 1;
+    height: 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .expr-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.25s ease, background 0.25s ease;
+    background: var(--gold-dim);
+  }
+  .expr-bar-fill.dominant { background: var(--gold-light); }
+  .expr-value {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+    transition: color 0.25s;
+  }
+  .expr-value.dominant { color: var(--gold); }
+
+  /* Landmark stats */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-item {
+    text-align: center;
+    padding: 10px 8px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+    border: 1px solid rgba(212,168,67,0.08);
+  }
+  .stat-num {
+    font-family: 'Cinzel', serif;
+    font-size: 1.3rem;
+    color: var(--gold);
+    display: block;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  /* Model status chips */
+  .model-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .model-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+    border: 1px solid rgba(212,168,67,0.08);
+    transition: border-color 0.3s;
+  }
+  .model-chip.ready   { border-color: rgba(80,208,128,0.3); }
+  .model-chip.loading { border-color: rgba(212,168,67,0.2); }
+  .model-chip.error   { border-color: rgba(220,80,60,0.3); opacity: 0.6; }
+  .model-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #444;
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .model-chip.ready   .model-dot { background: #50d080; }
+  .model-chip.loading .model-dot { background: var(--gold); animation: pulse 1s infinite; }
+  .model-chip.error   .model-dot { background: #e05040; }
+  .model-name {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    flex: 1;
+  }
+  .model-status-text {
+    font-family: 'Libre Baskerville', serif;
+    font-style: italic;
+    font-size: 0.62rem;
+    color: var(--text-dim);
+  }
+
+  /* Captured preview */
+  #capturePreview {
+    display: none;
+    width: 100%;
+    border-radius: 3px;
+    border: 1px solid var(--gold-dim);
+    margin-top: 8px;
+  }
+  .download-btn {
+    display: none;
+    width: 100%;
+    margin-top: 10px;
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    padding: 9px;
+    border: 1px solid var(--gold-dim);
+    background: rgba(42,21,8,0.8);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    border-radius: 2px;
+  }
+  .download-btn:hover { background: var(--gold-faint); }
+
+  /* ── CAPTURED PHOTO PANEL ── */
+  .capture-panel {
+    grid-column: 1 / -1;
+    display: none;
+    background: linear-gradient(135deg, rgba(42,21,8,0.9), rgba(26,14,6,0.95));
+    border: 1px solid var(--gold-dim);
+    border-radius: 4px;
+    padding: 20px 24px;
+    position: relative;
+  }
+  .capture-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .capture-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .capture-panel-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+  .capture-panel img {
+    width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+    border: 1px solid var(--gold-dim);
+    border-radius: 3px;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    width: 100%;
+    padding: 14px 32px;
+    border-top: 1px solid rgba(212,168,67,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+  }
+  .footer-text {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+  }
+
+  /* FPS counter */
+  #fpsDisplay {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+  }
+
+  @media (max-width: 768px) {
+    .main { grid-template-columns: 1fr; }
+    .side-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a class="header-brand" href="#">✦ TeenagerPlaybook</a>
+  <span class="header-label">AI Face Detection · Live Visualizer</span>
+  <div class="status-pill">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Initialising</span>
+  </div>
+</header>
+
+<div class="main" id="mainGrid">
+
+  <!-- ── CAMERA VIEWPORT ── -->
+  <div>
+    <div class="camera-viewport" id="viewport">
+      <div class="viewport-inner"></div>
+
+      <!-- Actual video feed -->
+      <video id="camVideo" autoplay playsinline muted></video>
+
+      <!-- Drawing canvas — face mesh + detection boxes -->
+      <canvas id="overlayCanvas"></canvas>
+
+      <!-- Animated scan line -->
+      <div class="scan-line" id="scanLine"></div>
+
+      <!-- HUD: top-left info -->
+      <div class="hud-top-left">
+        <div class="hud-text" id="hudFaceCount">No face detected</div>
+        <div class="hud-text" id="hudLandmarks">— landmarks</div>
+        <div class="hud-text" id="hudModel">— model</div>
+      </div>
+
+      <!-- HUD: bottom — dominant expression -->
+      <div class="hud-bottom">
+        <div class="hud-text" id="hudTimestamp"></div>
+        <div>
+          <div class="hud-expr" id="hudExpr">—</div>
+          <div class="hud-confidence" id="hudConf">—</div>
+        </div>
+      </div>
+
+      <!-- Flash for photo capture -->
+      <div class="flash-overlay" id="flashOverlay"></div>
+
+      <!-- No camera state -->
+      <div class="no-cam" id="noCam">
+        <div class="no-cam-icon">◎</div>
+        <p>Click "Activate Camera" to begin face detection</p>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-bar">
+      <button class="btn" id="startBtn" onclick="startCamera()">Activate Camera</button>
+      <button class="btn btn-capture" id="captureBtn" onclick="capturePhoto()" disabled>⊙ Capture Photo</button>
+      <button class="btn" id="toggleMeshBtn" onclick="toggleMesh()" style="display:none;">Mesh: ON</button>
+      <button class="btn" id="toggleBoxBtn"  onclick="toggleBox()"  style="display:none;">Box: ON</button>
+    </div>
+  </div>
+
+  <!-- ── SIDE PANEL ── -->
+  <div class="side-panel">
+
+    <!-- Expression probabilities -->
+    <div class="panel-card">
+      <div class="panel-title">Expression Analysis</div>
+      <div id="exprBars">
+        <div style="font-family:'Libre Baskerville',serif;font-style:italic;font-size:0.8rem;color:var(--text-dim);text-align:center;padding:10px 0;">
+          Awaiting camera…
+        </div>
+      </div>
+    </div>
+
+    <!-- Face stats -->
+    <div class="panel-card">
+      <div class="panel-title">Detection Stats</div>
+      <div class="stat-grid">
+        <div class="stat-item">
+          <span class="stat-num" id="statFaces">—</span>
+          <span class="stat-label">Faces</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="statLandmarks">—</span>
+          <span class="stat-label">Landmarks</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="statConf">—</span>
+          <span class="stat-label">Confidence</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="statFps">—</span>
+          <span class="stat-label">FPS</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model status -->
+    <div class="panel-card">
+      <div class="panel-title">AI Models</div>
+      <div class="model-chips">
+        <div class="model-chip loading" id="chip-tiny">
+          <div class="model-dot"></div>
+          <span class="model-name">TinyFace Detector</span>
+          <span class="model-status-text" id="chip-tiny-status">loading</span>
+        </div>
+        <div class="model-chip loading" id="chip-ssd">
+          <div class="model-dot"></div>
+          <span class="model-name">SSD MobileNet</span>
+          <span class="model-status-text" id="chip-ssd-status">loading</span>
+        </div>
+        <div class="model-chip loading" id="chip-expr">
+          <div class="model-dot"></div>
+          <span class="model-name">Expression Net</span>
+          <span class="model-status-text" id="chip-expr-status">loading</span>
+        </div>
+        <div class="model-chip loading" id="chip-mesh">
+          <div class="model-dot"></div>
+          <span class="model-name">Face Mesh 468pt</span>
+          <span class="model-status-text" id="chip-mesh-status">loading</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Capture preview -->
+    <div class="panel-card" id="captureCard" style="display:none;">
+      <div class="panel-title">Last Capture</div>
+      <img id="capturePreview" alt="Captured frame">
+      <a class="download-btn" id="downloadBtn" download="tpb-face-detection.png">↓ Save Image</a>
+    </div>
+
+  </div>
+</div>
+
+<footer class="footer">
+  <span class="footer-text">TeenagerPlaybook · IB MYP Personal Project · Face Detection Module</span>
+  <span class="footer-text" id="fpsDisplay">—</span>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════
+const MODELS_URL  = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/';
+const EXPRESSIONS = ['happy','sad','angry','fearful','disgusted','surprised','neutral'];
+const EXPR_COLORS = {
+  happy:     '#60d080',
+  sad:       '#6090d0',
+  angry:     '#e06040',
+  fearful:   '#c080d0',
+  disgusted: '#80c040',
+  surprised: '#e0c040',
+  neutral:   '#d4a843'
+};
+
+// ── State ──
+let camStream     = null;
+let meshInstance  = null;
+let meshLandmarks = null;
+let detectLoop    = null;
+let faceApiReady  = false;
+let showMesh      = true;
+let showBox       = true;
+let lastFrameTime = 0;
+let frameCount    = 0;
+let fps           = 0;
+let fpsInterval   = null;
+
+const camVideo     = document.getElementById('camVideo');
+const overlayCanvas= document.getElementById('overlayCanvas');
+const ctx          = overlayCanvas.getContext('2d');
+
+// ── Timestamp HUD ──
+setInterval(() => {
+  const now = new Date();
+  document.getElementById('hudTimestamp').textContent =
+    now.toLocaleTimeString('en-GB', { hour12: false });
+}, 1000);
+
+// ── Load face-api.js models ──
+window.addEventListener('load', async () => {
+  setStatus('loading', 'Loading AI models…');
+  try {
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL),
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODELS_URL),
+      faceapi.nets.faceExpressionNet.loadFromUri(MODELS_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URL)
+    ]);
+    faceApiReady = true;
+    setChipReady('tiny',  'ready');
+    setChipReady('ssd',   'ready');
+    setChipReady('expr',  'ready');
+    setStatus('loading', 'Models ready · Activate camera');
+  } catch(e) {
+    setStatus('error', 'Model load failed — check connection');
+    setChipReady('tiny',  'error');
+    setChipReady('ssd',   'error');
+    setChipReady('expr',  'error');
+  }
+
+  // Load MediaPipe Face Mesh separately
+  try {
+    meshInstance = new FaceMesh({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+    });
+    meshInstance.setOptions({
+      maxNumFaces:            1,
+      refineLandmarks:        true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence:  0.5
+    });
+    meshInstance.onResults(results => {
+      meshLandmarks = results.multiFaceLandmarks?.[0] || null;
+    });
+    setChipReady('mesh', 'ready');
+  } catch(e) {
+    setChipReady('mesh', 'error');
+    meshInstance = null;
+  }
+});
+
+// ── Start camera ──
+async function startCamera() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    camVideo.srcObject = camStream;
+    await camVideo.play();
+
+    // Size canvas to match video
+    camVideo.addEventListener('loadedmetadata', () => {
+      overlayCanvas.width  = camVideo.videoWidth;
+      overlayCanvas.height = camVideo.videoHeight;
+    });
+
+    document.getElementById('noCam').style.display   = 'none';
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('captureBtn').disabled    = false;
+    document.getElementById('toggleMeshBtn').style.display = 'inline-flex';
+    document.getElementById('toggleBoxBtn').style.display  = 'inline-flex';
+    document.getElementById('scanLine').classList.add('active');
+
+    // Start Face Mesh camera feed
+    if (meshInstance) {
+      const mpCam = new Camera(camVideo, {
+        onFrame: async () => {
+          if (meshInstance) await meshInstance.send({ image: camVideo });
+        },
+        width: 1280, height: 720
+      });
+      mpCam.start();
+    }
+
+    // FPS counter
+    fpsInterval = setInterval(() => {
+      fps = frameCount;
+      frameCount = 0;
+      document.getElementById('statFps').textContent  = fps;
+      document.getElementById('fpsDisplay').textContent = fps + ' fps';
+    }, 1000);
+
+    setStatus('live', 'Live · Detecting');
+    startDetectionLoop();
+
+  } catch(e) {
+    setStatus('error', 'Camera denied — check permissions');
+  }
+}
+
+// ── Detection loop — runs every 350ms (face-api is heavy) ──
+function startDetectionLoop() {
+  detectLoop = setInterval(async () => {
+    if (!camVideo || camVideo.readyState < 3) return;
+    frameCount++;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+    // 1. Draw Face Mesh (MediaPipe — runs async via Camera callback)
+    if (showMesh && meshLandmarks) {
+      drawFaceMesh(meshLandmarks);
+    }
+
+    // 2. Run face-api.js detection
+    if (!faceApiReady) return;
+    try {
+      const detections = await faceapi
+        .detectAllFaces(camVideo, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 }))
+        .withFaceExpressions();
+
+      const faceCount = detections.length;
+      document.getElementById('statFaces').textContent    = faceCount;
+      document.getElementById('statLandmarks').textContent = meshLandmarks ? '468' : '—';
+      document.getElementById('hudFaceCount').textContent  =
+        faceCount === 0 ? 'No face detected' : faceCount + ' face' + (faceCount > 1 ? 's' : '') + ' detected';
+      document.getElementById('hudLandmarks').textContent  =
+        meshLandmarks ? '468 mesh landmarks' : 'Face Mesh: loading…';
+      document.getElementById('hudModel').textContent = 'TinyFace + SSD + FaceMesh';
+
+      if (faceCount > 0) {
+        const det  = detections[0];
+        const expr = det.expressions;
+        const conf = det.detection.score;
+
+        document.getElementById('statConf').textContent = Math.round(conf * 100) + '%';
+
+        // Dominant expression
+        const dominant = Object.entries(expr).sort((a,b) => b[1] - a[1])[0];
+        document.getElementById('hudExpr').textContent = dominant[0].toUpperCase();
+        document.getElementById('hudConf').textContent = Math.round(dominant[1] * 100) + '% confidence';
+
+        // Draw detection box
+        if (showBox) drawDetectionBox(det.detection.box, conf, dominant[0]);
+
+        // Update expression bars
+        updateExprBars(expr, dominant[0]);
+
+      } else {
+        document.getElementById('statConf').textContent = '—';
+        document.getElementById('hudExpr').textContent  = '—';
+        document.getElementById('hudConf').textContent  = '—';
+        resetExprBars();
+      }
+
+    } catch(e) { /* skip frame on error */ }
+  }, 350);
+}
+
+// ── Draw Face Mesh — 468 gold landmarks ──
+function drawFaceMesh(lm) {
+  const W = overlayCanvas.width;
+  const H = overlayCanvas.height;
+
+  // Draw connections as thin lines
+  // Key face contour indices (subset for readability)
+  const CONTOUR_GROUPS = [
+    // Face oval
+    [10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109,10],
+    // Left eye
+    [362,382,381,380,374,373,390,249,263,466,388,387,386,385,384,398,362],
+    // Right eye
+    [33,7,163,144,145,153,154,155,133,173,157,158,159,160,161,246,33],
+    // Lips outer
+    [61,146,91,181,84,17,314,405,321,375,291,409,270,269,267,0,37,39,40,185,61],
+    // Nose bridge
+    [168,6,197,195,5],
+    // Left eyebrow
+    [276,283,282,295,285,300,293,334,296,336],
+    // Right eyebrow
+    [46,53,52,65,55,70,63,105,66,107],
+  ];
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(212,168,67,0.25)';
+  ctx.lineWidth   = 0.8;
+
+  CONTOUR_GROUPS.forEach(group => {
+    ctx.beginPath();
+    group.forEach((idx, i) => {
+      if (!lm[idx]) return;
+      const x = lm[idx].x * W;
+      const y = lm[idx].y * H;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  });
+
+  // Draw landmark dots — key points only (not all 468, too cluttered)
+  const KEY_POINTS = [
+    1, 9, 10, 13, 14, 17, 33, 37, 46, 52, 55, 61, 63, 70, 78,
+    84, 91, 93, 103, 107, 109, 127, 132, 133, 136, 144, 145, 146,
+    148, 149, 150, 152, 153, 154, 155, 157, 158, 159, 160, 161, 162,
+    163, 168, 172, 173, 176, 181, 182, 185, 195, 197, 234, 246, 249,
+    251, 263, 267, 269, 270, 276, 282, 283, 284, 285, 288, 291, 293,
+    295, 296, 297, 300, 314, 321, 323, 332, 334, 336, 338, 356, 361,
+    362, 365, 373, 374, 375, 377, 378, 379, 380, 381, 382, 384, 385,
+    386, 387, 388, 389, 390, 397, 398, 400, 405, 409, 454, 466
+  ];
+
+  KEY_POINTS.forEach(idx => {
+    if (!lm[idx]) return;
+    const x = lm[idx].x * W;
+    const y = lm[idx].y * H;
+    ctx.beginPath();
+    ctx.arc(x, y, 1.2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(212,168,67,0.6)';
+    ctx.fill();
+  });
+
+  ctx.restore();
+}
+
+// ── Draw detection bounding box ──
+function drawDetectionBox(box, conf, emotion) {
+  const W = overlayCanvas.width;
+  const H = overlayCanvas.height;
+  // Note: video is CSS-mirrored but canvas isn't — we need to flip x
+  const x = W - box.x - box.width;
+  const y = box.y;
+  const w = box.width;
+  const h = box.height;
+
+  const color = EXPR_COLORS[emotion] || 'rgba(212,168,67,0.9)';
+
+  ctx.save();
+
+  // Main box
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 1.5;
+  ctx.setLineDash([]);
+  ctx.strokeRect(x, y, w, h);
+
+  // Corner accents — thicker
+  const cs = 16; // corner size
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  // Top-left
+  ctx.moveTo(x, y + cs);     ctx.lineTo(x, y);           ctx.lineTo(x + cs, y);
+  // Top-right
+  ctx.moveTo(x+w-cs, y);     ctx.lineTo(x+w, y);         ctx.lineTo(x+w, y+cs);
+  // Bottom-right
+  ctx.moveTo(x+w, y+h-cs);   ctx.lineTo(x+w, y+h);       ctx.lineTo(x+w-cs, y+h);
+  // Bottom-left
+  ctx.moveTo(x+cs, y+h);     ctx.lineTo(x, y+h);         ctx.lineTo(x, y+h-cs);
+  ctx.stroke();
+
+  // Confidence label
+  const label = emotion.toUpperCase() + '  ' + Math.round(conf * 100) + '%';
+  ctx.font      = '500 11px "Cinzel", serif';
+  ctx.fillStyle = color;
+
+  const labelW = ctx.measureText(label).width + 14;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(x - 1, y - 22, labelW, 20);
+  ctx.fillStyle = color;
+  ctx.fillText(label, x + 6, y - 7);
+
+  ctx.restore();
+}
+
+// ── Expression bars ──
+function updateExprBars(expressions, dominant) {
+  const container = document.getElementById('exprBars');
+  container.innerHTML = '';
+
+  const sorted = EXPRESSIONS
+    .map(e => ({ name: e, val: expressions[e] || 0 }))
+    .sort((a, b) => b.val - a.val);
+
+  sorted.forEach(({ name, val }) => {
+    const pct   = Math.round(val * 100);
+    const isDom = name === dominant;
+    const color = EXPR_COLORS[name] || 'var(--gold)';
+
+    const row = document.createElement('div');
+    row.className = 'expr-row';
+    row.innerHTML = `
+      <span class="expr-label">${name}</span>
+      <div class="expr-bar-wrap">
+        <div class="expr-bar-fill ${isDom ? 'dominant' : ''}"
+             style="width:${pct}%;background:${isDom ? color : 'var(--gold-dim)'}"></div>
+      </div>
+      <span class="expr-value ${isDom ? 'dominant' : ''}">${pct}%</span>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function resetExprBars() {
+  const container = document.getElementById('exprBars');
+  container.innerHTML = '';
+  EXPRESSIONS.forEach(name => {
+    const row = document.createElement('div');
+    row.className = 'expr-row';
+    row.innerHTML = `
+      <span class="expr-label">${name}</span>
+      <div class="expr-bar-wrap"><div class="expr-bar-fill" style="width:0%"></div></div>
+      <span class="expr-value">0%</span>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// ── Capture photo ──
+async function capturePhoto() {
+  const btn = document.getElementById('captureBtn');
+  btn.classList.add('capturing');
+  btn.disabled = true;
+
+  // Flash effect
+  const flash = document.getElementById('flashOverlay');
+  flash.classList.add('flash');
+  setTimeout(() => flash.classList.remove('flash'), 150);
+
+  // Composite: video + overlay canvas onto a single capture canvas
+  const capture = document.createElement('canvas');
+  capture.width  = overlayCanvas.width  || camVideo.videoWidth  || 1280;
+  capture.height = overlayCanvas.height || camVideo.videoHeight || 720;
+  const cCtx = capture.getContext('2d');
+
+  // Draw mirrored video
+  cCtx.save();
+  cCtx.translate(capture.width, 0);
+  cCtx.scale(-1, 1);
+  cCtx.drawImage(camVideo, 0, 0, capture.width, capture.height);
+  cCtx.restore();
+
+  // Draw overlays (canvas is already in mirrored-coordinate space from our drawing)
+  // We need to flip the overlay canvas back since we drew with mirrored coords
+  cCtx.save();
+  cCtx.translate(capture.width, 0);
+  cCtx.scale(-1, 1);
+  cCtx.drawImage(overlayCanvas, 0, 0);
+  cCtx.restore();
+
+  // Draw UI overlays — timestamp, expression, branding watermark
+  const now   = new Date();
+  const tsStr = now.toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false });
+
+  // Semi-transparent banner at bottom
+  cCtx.fillStyle = 'rgba(10,5,2,0.7)';
+  cCtx.fillRect(0, capture.height - 52, capture.width, 52);
+
+  cCtx.font      = '500 13px "Cinzel", serif';
+  cCtx.fillStyle = 'rgba(212,168,67,0.9)';
+  cCtx.fillText('✦ TeenagerPlaybook · AI Face Detection · ' + tsStr, 20, capture.height - 28);
+
+  const exprEl = document.getElementById('hudExpr').textContent;
+  const confEl = document.getElementById('hudConf').textContent;
+  if (exprEl !== '—') {
+    cCtx.font      = '400 11px "Libre Baskerville", serif';
+    cCtx.fillStyle = 'rgba(212,168,67,0.6)';
+    cCtx.fillText('Detected: ' + exprEl + ' · ' + confEl, 20, capture.height - 12);
+  }
+
+  const imgUrl = capture.toDataURL('image/png');
+
+  // Show preview
+  const preview = document.getElementById('capturePreview');
+  preview.src           = imgUrl;
+  preview.style.display = 'block';
+  document.getElementById('captureCard').style.display = 'block';
+
+  const dl    = document.getElementById('downloadBtn');
+  dl.href     = imgUrl;
+  dl.style.display = 'block';
+  dl.download = 'tpb-face-detection-' + Date.now() + '.png';
+
+  btn.classList.remove('capturing');
+  btn.disabled = false;
+  btn.textContent = '⊙ Capture Again';
+}
+
+// ── Toggle overlays ──
+function toggleMesh() {
+  showMesh = !showMesh;
+  document.getElementById('toggleMeshBtn').textContent = 'Mesh: ' + (showMesh ? 'ON' : 'OFF');
+  document.getElementById('toggleMeshBtn').style.opacity = showMesh ? '1' : '0.5';
+}
+function toggleBox() {
+  showBox = !showBox;
+  document.getElementById('toggleBoxBtn').textContent = 'Box: ' + (showBox ? 'ON' : 'OFF');
+  document.getElementById('toggleBoxBtn').style.opacity = showBox ? '1' : '0.5';
+}
+
+// ── UI helpers ──
+function setStatus(type, msg) {
+  const dot  = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  dot.className  = 'status-dot ' + type;
+  text.textContent = msg;
+}
+
+function setChipReady(name, state) {
+  const chip   = document.getElementById('chip-' + name);
+  const status = document.getElementById('chip-' + name + '-status');
+  if (!chip) return;
+  chip.className = 'model-chip ' + (state === 'ready' ? 'ready' : state === 'error' ? 'error' : 'loading');
+  if (status) status.textContent = state === 'ready' ? 'ready' : state === 'error' ? 'unavailable' : 'loading';
+
+  // Check if all ready
+  const chips = ['tiny','ssd','expr','mesh'];
+  const allReady = chips.every(n => {
+    const c = document.getElementById('chip-' + n);
+    return c && c.classList.contains('ready');
+  });
+  if (allReady) setStatus('live', 'All models ready');
+}
+
+// Init expression bars with zeros
+resetExprBars();
+</script>
+</body>
+</html>

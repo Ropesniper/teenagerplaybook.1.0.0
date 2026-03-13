@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noai, noimageai">
+  <meta name="copyright" content="TeenagerPlaybook. All rights reserved.">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Body Postures — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- AI Model Stack -->
+  <!-- 1. TensorFlow.js core — required by PoseNet -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+  <!-- 2. TensorFlow PoseNet — second independent skeleton model -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js"></script>
+  <!-- 3. MediaPipe utilities -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <!-- 4. MediaPipe Pose — primary skeleton model -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <!-- 5. Environment checker -->
+  <script src="js/env-check.js"></script>
+
+  <style>
+    .ai-status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: 100%;
+      max-width: 340px;
+    }
+    .ai-status-chip {
+      background: rgba(20,10,4,0.6);
+      border: 1px solid var(--wood-mid);
+      border-radius: 8px;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    .ai-status-chip .chip-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      display: block;
+      margin-bottom: 3px;
+    }
+    .ai-status-chip .chip-score {
+      font-family: 'Cinzel', serif;
+      font-size: 0.88rem;
+      color: var(--gold);
+    }
+    .ai-status-chip.active  { border-color: var(--gold-dim); }
+    .ai-status-chip.loading { border-color: #8b6020; }
+    .ai-status-chip.failed  { border-color: #6b2020; opacity: 0.5; }
+    .composite-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      color: var(--gold-dim);
+      letter-spacing: 0.1em;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<script src="js/auth-guard.js"></script>
+<script>const _sess = requireAuth();</script>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="history.html">History</a>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+  <p class="title-main">Body Postures</p>
+  <p class="title-sub">Stand tall — your body speaks before your words</p>
+  <hr class="gold-rule">
+
+  <div class="wood-panel mb-24">
+    <h3 class="panel-label">📋 How This Session Works</h3>
+    <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.8;">
+      Watch the instructional video. It pauses at exercise checkpoints and your camera activates. <strong style="color:var(--gold);">Three AI models</strong> evaluate your posture simultaneously — MediaPipe Pose, TensorFlow PoseNet, and a lighting quality checker. Their scores are combined into one composite result. Reach <strong style="color:var(--gold);">80%</strong> to pass.
+    </p>
+    <div class="check-row mt-16">
+      <input type="checkbox" id="camPermCheck">
+      <label for="camPermCheck" style="color:var(--text-muted);font-size:0.88rem;">
+        I allow camera access — processed entirely in the browser, never stored or transmitted.
+      </label>
+    </div>
+  </div>
+
+
+  <!-- CDN offline warning — shown automatically if AI libraries fail to load -->
+  <div id="cdnWarningBanner" style="display:none;background:rgba(80,20,10,0.5);border:1px solid rgba(180,60,40,0.5);border-radius:10px;padding:12px 18px;margin-bottom:16px;text-align:center;">
+    <p style="font-family:'Cinzel',serif;font-size:0.78rem;color:#e08060;letter-spacing:0.06em;margin-bottom:4px;">⚠ AI LIBRARIES UNAVAILABLE</p>
+    <p style="font-family:'Libre Baskerville',serif;font-size:0.82rem;color:var(--text-muted);line-height:1.5;">Could not reach cdn.jsdelivr.net. AI models are offline — exercises will run in fallback scoring mode. Check your internet connection and reload for full accuracy.</p>
+  </div>
+
+  <!-- ── Environment Check Popup ── -->
+  <div class="popup-overlay" id="envCheckPopup">
+    <div class="popup-box wood-panel env-popup-box">
+      <p class="popup-title" style="margin-bottom:6px;">Before You Begin — Body Postures Session</p>
+      <div style="font-family:'Libre Baskerville',serif;font-size:0.85rem;color:var(--text-muted);text-align:left;margin-bottom:16px;line-height:1.8;">
+        <p style="margin-bottom:8px;font-family:'IM Fell English',serif;font-style:italic;color:var(--gold-dim);">What this session requires:</p>
+        <p>📷 <strong style="color:var(--text-main);">Camera access</strong> — your body is analysed in real time. Video never leaves your browser.</p>
+        <p>🎤 <strong style="color:var(--text-main);">Microphone access</strong> — exercises 2 and 3 also need your microphone for speech detection.</p>
+        <p>🤖 <strong style="color:var(--text-main);">AI body analysis</strong> — MediaPipe Pose and PoseNet track your skeleton simultaneously.</p>
+        <p>🧍 <strong style="color:var(--text-main);">Stand up</strong> — all three exercises require you to be standing. Your full body should be visible in camera, including your hands.</p>
+        <p>💡 <strong style="color:var(--text-main);">Good lighting and space</strong> — face a light source. Make sure you have enough room to gesture freely with your arms.</p>
+        <p>👐 <strong style="color:var(--text-main);">Palms must be visible</strong> — Exercise 1 specifically requires your palms facing the camera. Step back far enough that your hands are in frame.</p>
+        <p style="margin-top:10px;">You need <strong style="color:var(--gold);">80% or above</strong> to pass each exercise. Exercises 2 and 3 involve speaking while the camera watches.</p>
+      </div>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:0.88rem;color:var(--text-muted);text-align:center;margin-bottom:18px;">Now checking your camera and environment…</p>
+      <div id="envStatus" class="env-status-msg env-status-loading"><span class="env-status-icon">⏳</span> Checking…</div>
+      <div id="envChecklist" class="env-checklist"></div>
+      <div id="envAdvice" style="margin-bottom:16px;"></div>
+      <div class="popup-actions">
+        <button class="btn btn-primary"   id="envStartBtn" style="display:none;">Begin Session ✦</button>
+        <button class="btn btn-secondary" id="envRetryBtn" style="display:none;">Re-check</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="video-wrap" id="videoWrap">
+    <video id="mainVideo" preload="metadata" playsinline>
+      <source src="https://docs.google.com/uc?export=download&id=1zaSm_aF1RTCqZ0e3Koh5HBcee_BBqg-C" type="video/mp4">
+    </video>
+    <div class="video-no-src" id="videoPlaceholder" style="display:none;">
+      <p>Video not yet uploaded. Admin Panel → Upload Video → Body Postures.</p>
+    </div>
+
+    <div class="exercise-overlay hidden" id="exerciseOverlay">
+      <p class="exercise-msg" id="exerciseTitle">⏸ Exercise Checkpoint</p>
+      <p class="exercise-sub" id="exerciseInstruction">Follow the instructions from the video.</p>
+      <p style="font-family:'Libre Baskerville',serif;font-size:0.82rem;color:var(--gold-dim);margin-bottom:8px;padding:8px 12px;background:rgba(40,20,8,0.5);border-radius:8px;border:1px solid rgba(180,130,40,0.2);max-width:400px;text-align:center;" id="popupNoteEl"></p>
+
+      <!-- Eye contact phrase + timer (shown only for exercise 2) -->
+      <div id="eyeContactWrap" style="display:none;text-align:center;margin-bottom:8px;">
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:0.95rem;color:var(--gold);margin-bottom:4px;" id="eyePhraseDisplay"></p>
+        <p style="font-family:'Cinzel',serif;font-size:1.3rem;color:var(--gold);">👁 <span id="eyeTimerCount">5</span>s</p>
+        <p style="font-family:'Libre Baskerville',serif;font-size:0.78rem;color:var(--text-dim);" id="eyePhaseLabel">Maintain eye contact while speaking</p>
+      </div>
+
+      <!-- Camera + skeleton canvas -->
+      <div style="position:relative;display:inline-block;">
+        <video id="camFeed" autoplay playsinline muted></video>
+        <canvas id="aiCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:10px;"></canvas>
+      </div>
+
+      <!-- AI Status chips — one per model -->
+      <div class="ai-status-grid">
+        <div class="ai-status-chip loading" id="chip-mediapipe">
+          <span class="chip-name">MediaPipe</span>
+          <span class="chip-score" id="score-mediapipe">…</span>
+        </div>
+        <div class="ai-status-chip loading" id="chip-posenet">
+          <span class="chip-name">PoseNet</span>
+          <span class="chip-score" id="score-posenet">…</span>
+        </div>
+        <div class="ai-status-chip loading" id="chip-lighting">
+          <span class="chip-name">Lighting</span>
+          <span class="chip-score" id="score-lighting">…</span>
+        </div>
+      </div>
+
+      <!-- Composite bar -->
+      <div class="accuracy-bar-wrap">
+        <p class="composite-label">COMPOSITE SCORE</p>
+        <p class="accuracy-label">Posture Score: <span id="accuracyValue">0%</span></p>
+        <div class="accuracy-bar"><div class="accuracy-fill" id="accuracyFill"></div></div>
+        <p style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--text-dim);text-align:center;margin-top:4px;letter-spacing:0.06em;">PASS THRESHOLD: 80%</p>
+      </div>
+
+      <!-- What's being evaluated -->
+      <div style="background:rgba(20,10,4,0.6);border:1px solid var(--gold-dim);border-radius:10px;padding:8px 14px;max-width:300px;">
+        <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold-dim);letter-spacing:0.08em;margin-bottom:3px;">EVALUATING</p>
+        <p style="font-family:'Libre Baskerville',serif;font-size:0.8rem;color:var(--text-muted);line-height:1.4;" id="aiEvalDesc">—</p>
+      </div>
+
+      <p class="exercise-sub" id="exerciseFeedback" style="color:var(--gold);">Position your full body in frame…</p>
+
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="replayInstructions()">↩ Replay Instructions</button>
+        <button class="btn btn-primary" id="tryAgainBtn" onclick="retryExercise()" style="display:none;">Try Again</button>
+        <button class="btn btn-secondary" onclick="skipExercise()">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wood-panel mt-24">
+    <h3 class="panel-label">Session Progress</h3>
+    <div class="stat-row">
+      <div class="stat-item"><span class="stat-num" id="trialCount">0</span><span class="stat-name">Trials</span></div>
+      <div class="stat-item"><span class="stat-num" id="passCount">0</span><span class="stat-name">Passed</span></div>
+      <div class="stat-item"><span class="stat-num" id="avgAccuracy">—</span><span class="stat-name">Avg Score</span></div>
+    </div>
+  </div>
+</div>
+
+  <!-- ── Session Resume Popup ── -->
+  <div class="popup-overlay hidden" id="resumePopup">
+    <div class="popup-box wood-panel">
+      <p class="popup-title">Resume Session?</p>
+      <p class="popup-body" id="resumeMsg">You left this session partway through. Would you like to continue from where you stopped?</p>
+      <div class="popup-actions">
+        <button class="btn btn-primary"   onclick="resumeSession()">Resume ✦</button>
+        <button class="btn btn-secondary" onclick="startFresh()">Start from Beginning</button>
+      </div>
+    </div>
+  </div>
+<div class="popup-overlay hidden" id="congratsPopup">
+  <div class="popup-box wood-panel congrats-pop">
+    <p class="confetti-line">🎉 ✦ 🎉</p>
+    <p class="popup-title">Excellent Posture!</p>
+    <p class="popup-body success" id="congratsMsg">All three AI models confirmed outstanding alignment!</p>
+    <p class="popup-body" id="congratsDetail" style="font-size:1rem;color:var(--gold);font-family:'IM Fell English',serif;font-style:italic;margin-top:4px;"></p>
+    <p class="popup-body" style="font-size:0.82rem;color:var(--text-muted);">The video will continue when you're ready.</p>
+    <div class="popup-actions">
+      <button class="btn btn-primary" onclick="continueVideo()">Continue Video →</button>
+    </div>
+  </div>
+</div>
+
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions"><button class="btn btn-secondary" onclick="closePopup()">Close</button></div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CHECKPOINT CONFIGURATION
+//
+//  time:        seconds in video to pause for exercise
+//  replayTime:  seconds to jump back to when user hits ↩ Replay
+//  evaluator:   'open_posture' | 'eye_contact_speech' | 'body_speech_match'
+//  needsMic:    true if microphone is also required
+// ═══════════════════════════════════════════════════════════════
+const CHECKPOINTS = [
+  {
+    time:       178,   // 2min 58sec
+    replayTime: 164,
+    name:       'Exercise 1 — Open Posture',
+    instruction:'Stand with open posture — palms visible and facing outward, shoulders straight and back, chest open.',
+    popupNote:  'Stand up. Show your palms facing the camera. Shoulders straight, not hunched.',
+    aiEval:     'Open posture · palms visible · shoulders level and back · upright spine · standing',
+    evaluator:  'open_posture',
+    needsMic:   false,
+    spaceNote:  'Stand up — you need full body visible including your hands.'
+  },
+  {
+    time:       289,   // 4min 49sec
+    replayTime: 275,
+    name:       'Exercise 2 — Eye Contact While Speaking',
+    instruction:'Maintain eye contact with the camera while saying the phrases. Hold 5 seconds for phrase 1, 7 seconds for phrase 2.',
+    popupNote:  '"Did you know that George Washington has done this and that" (5 sec eye contact) → "That is amazing!" (7 sec eye contact)',
+    aiEval:     'Face centred · eyes visible and directed forward · 5 sec then 7 sec sustained gaze · speaking',
+    evaluator:  'eye_contact_speech',
+    needsMic:   true,
+    spaceNote:  'Stand or sit — face must be clearly visible and centred on camera.',
+    phrase1:    'Did you know that George Washington has done this and that',
+    eyeTime1:   5,
+    phrase2:    'That is amazing!',
+    eyeTime2:   7
+  },
+  {
+    time:       373,   // 6min 13sec
+    replayTime: 359,
+    name:       'Exercise 3 — Match Body to Words',
+    instruction:'Speak naturally and let your body language match your words — gestures, posture shifts, and expressions should align with what you say.',
+    popupNote:  'Say anything — your body movements and speech should feel connected and congruent.',
+    aiEval:     'Gesture-speech alignment · posture expressiveness · upper body movement matches speech energy',
+    evaluator:  'body_speech_match',
+    needsMic:   true,
+    spaceNote:  'Stand — you need to move freely. Gestures should be visible.'
+  }
+];
+
+const PASS_THRESHOLD = 80;
+const SESSION_TYPE   = 'bodypostures';
+
+// ── Model state ──
+const models = {
+  mediapipe: { loaded: false, score: 0, weight: 0.5  },  // 50% weight — most detailed
+  posenet:   { loaded: false, score: 0, weight: 0.35 },  // 35% weight — second skeleton
+  lighting:  { loaded: true,  score: 0, weight: 0.15 }   // 15% weight — always available
+};
+
+let trials = [], camStream = null, poseInstance = null, poseNetModel = null;
+let currentAccuracy = 0, scoringInterval = null;
+let nextCheckpoint = 0, exerciseActive = false;
+let mpLandmarks = null;   // latest MediaPipe results
+let pnPose      = null;   // latest PoseNet results
+
+const video    = document.getElementById('mainVideo');
+const overlay  = document.getElementById('exerciseOverlay');
+const camFeed  = document.getElementById('camFeed');
+const aiCanvas = document.getElementById('aiCanvas');
+const aiCtx    = aiCanvas.getContext('2d');
+
+// ── Pre-load PoseNet in background ──
+(async () => {
+  try {
+    poseNetModel = await posenet.load({
+      architecture:      'MobileNetV1',
+      outputStride:      16,
+      inputResolution:   { width: 320, height: 240 },
+      multiplier:        0.75
+    });
+    models.posenet.loaded = true;
+    console.log('✦ PoseNet loaded');
+  } catch(e) {
+    console.warn('PoseNet failed to load:', e.message);
+    setChipFailed('posenet');
+  }
+})();
+
+// ── Video events ──
+video.addEventListener('error', () => {
+  document.getElementById('videoPlaceholder').style.display = 'flex';
+  video.style.display = 'none';
+});
+video.addEventListener('timeupdate', () => {
+  if (exerciseActive || nextCheckpoint >= CHECKPOINTS.length) return;
+  // Only trigger the CURRENT checkpoint — never look back at passed ones
+  // This prevents replayInstructions() from re-triggering earlier checkpoints
+  const cp = CHECKPOINTS[nextCheckpoint];
+  if (video.currentTime >= cp.time && video.currentTime <= cp.time + 1.5) {
+    video.pause();
+    startExercise(nextCheckpoint);
+  }
+});
+
+// ── Start exercise ──
+async function startExercise(idx) {
+  exerciseActive = true;
+  const cp = CHECKPOINTS[idx];
+  document.getElementById('exerciseTitle').textContent       = '⏸ ' + cp.name;
+  document.getElementById('exerciseInstruction').textContent = cp.instruction;
+  document.getElementById('popupNoteEl').textContent         = cp.popupNote || '';
+  document.getElementById('aiEvalDesc').textContent          = cp.aiEval;
+  document.getElementById('exerciseFeedback').textContent    = 'Position your full body in frame…';
+  document.getElementById('tryAgainBtn').style.display       = 'none';
+
+  // Eye contact wrap visibility
+  const eyeWrap = document.getElementById('eyeContactWrap');
+  if (cp.evaluator === 'eye_contact_speech') {
+    eyeWrap.style.display = 'block';
+    document.getElementById('eyePhraseDisplay').textContent = '"' + cp.phrase1 + '"';
+    document.getElementById('eyeTimerCount').textContent    = cp.eyeTime1;
+    document.getElementById('eyePhaseLabel').textContent    = 'Maintain eye contact while speaking — Phrase 1 of 2';
+  } else {
+    eyeWrap.style.display = 'none';
+  }
+
+  resetChips();
+  setAccuracy(0);
+  mpLandmarks = null;
+  pnPose      = null;
+  window._micStreamBP = null;
+  window._audioCtxBP  = null;
+  window._analyserBP  = null;
+  overlay.classList.remove('hidden');
+
+  if (!document.getElementById('camPermCheck').checked) {
+    document.getElementById('exerciseFeedback').textContent = 'Please tick camera consent above first.';
+    return;
+  }
+
+  // Start camera always
+  await startCamera();
+  initMediaPipe();
+
+  // Start mic if this checkpoint needs it
+  if (cp.needsMic) {
+    try {
+      window._micStreamBP = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      window._audioCtxBP  = new (window.AudioContext || window.webkitAudioContext)();
+      const src = window._audioCtxBP.createMediaStreamSource(window._micStreamBP);
+      window._analyserBP  = window._audioCtxBP.createAnalyser();
+      window._analyserBP.fftSize = 1024;
+      src.connect(window._analyserBP);
+    } catch(e) {
+      document.getElementById('exerciseFeedback').textContent = 'Microphone access denied — please allow it for this exercise.';
+    }
+  }
+
+  startScoring(idx);
+}
+
+async function startCamera() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    camFeed.srcObject = camStream;
+    await camFeed.play();
+    aiCanvas.width  = camFeed.videoWidth  || 640;
+    aiCanvas.height = camFeed.videoHeight || 480;
+  } catch(e) {
+    showPopup('Camera Denied', 'Please allow camera access in your browser and try again.', 'error');
+  }
+}
+
+function stopCamera() {
+  if (camStream)   { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (poseInstance){ poseInstance.close(); poseInstance = null; }
+  // Also stop mic if it was started
+  if (window._micStreamBP)  { window._micStreamBP.getTracks().forEach(t => t.stop()); window._micStreamBP = null; }
+  if (window._audioCtxBP)   { window._audioCtxBP.close().catch(()=>{}); window._audioCtxBP = null; }
+  window._analyserBP = null;
+  clearInterval(scoringInterval);
+  clearInterval(_autoSaveInterval);
+}
+
+// ── MediaPipe Pose init ──
+function initMediaPipe() {
+  try {
+    poseInstance = new Pose({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
+    });
+    poseInstance.setOptions({
+      modelComplexity:        1,
+      smoothLandmarks:        true,
+      enableSegmentation:     false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence:  0.5
+    });
+    poseInstance.onResults(results => {
+      mpLandmarks = results.poseLandmarks || null;
+      models.mediapipe.loaded = true;
+
+      // Draw skeleton
+      aiCtx.save();
+      aiCtx.clearRect(0, 0, aiCanvas.width, aiCanvas.height);
+      if (mpLandmarks) {
+        drawConnectors(aiCtx, mpLandmarks, POSE_CONNECTIONS, { color: 'rgba(212,168,67,0.65)', lineWidth: 2 });
+        drawLandmarks(aiCtx,  mpLandmarks, { color: 'rgba(212,168,67,0.9)', fillColor: 'rgba(180,130,40,0.5)', lineWidth: 1, radius: 3 });
+      }
+      aiCtx.restore();
+    });
+
+    const mpCam = new Camera(camFeed, {
+      onFrame: async () => { if (poseInstance) await poseInstance.send({ image: camFeed }); },
+      width: 640, height: 480
+    });
+    mpCam.start();
+  } catch(e) {
+    console.warn('MediaPipe failed:', e.message);
+    setChipFailed('mediapipe');
+  }
+}
+
+// ── Composite scoring loop — runs every 600ms ──
+// ── Composite scoring loop — runs every 600ms ──
+function startScoring(idx) {
+  let elapsed = 0;
+  const cp = CHECKPOINTS[idx];
+  let eyePhase = 1;
+  let eyeHeld  = 0;
+  let motionHistory = [];
+  let prevLandmarks = null;
+
+  scoringInterval = setInterval(async () => {
+    elapsed += 0.6;
+
+    // Voice RMS
+    let voiceRMS = 0;
+    if (window._analyserBP) {
+      const buf = new Float32Array(window._analyserBP.frequencyBinCount);
+      window._analyserBP.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      voiceRMS = Math.sqrt(sum / buf.length);
+    }
+    const isSpeaking = voiceRMS > 0.015;
+
+    // 1. MediaPipe
+    if (models.mediapipe.loaded && mpLandmarks) {
+      models.mediapipe.score = scoreMediaPipe(mpLandmarks, cp.evaluator, isSpeaking);
+      setChipActive('mediapipe', models.mediapipe.score);
+    } else if (!models.mediapipe.loaded) { setChipFailed('mediapipe'); }
+
+    // 2. PoseNet
+    if (models.posenet.loaded && poseNetModel && camFeed.readyState === 4) {
+      try {
+        pnPose = await poseNetModel.estimateSinglePose(camFeed, { flipHorizontal: true });
+        models.posenet.score = scorePoseNet(pnPose, cp.evaluator, isSpeaking);
+        setChipActive('posenet', models.posenet.score);
+      } catch(e) {}
+    } else if (!models.posenet.loaded) { setChipFailed('posenet'); }
+
+    // 3. Lighting
+    models.lighting.score = scoreLighting();
+    setChipActive('lighting', models.lighting.score);
+
+    // Eye contact phase logic (exercise 2)
+    if (cp.evaluator === 'eye_contact_speech' && mpLandmarks) {
+      const faceVisible = mpLandmarks[0] && mpLandmarks[0].visibility > 0.6;
+      const lookingFwd  = faceVisible && Math.abs(mpLandmarks[0].x - 0.5) < 0.18;
+      if (lookingFwd && isSpeaking) { eyeHeld += 0.6; }
+      else { eyeHeld = Math.max(0, eyeHeld - 0.3); }
+      const target    = eyePhase === 1 ? cp.eyeTime1 : cp.eyeTime2;
+      const remaining = Math.max(0, target - Math.floor(eyeHeld));
+      document.getElementById('eyeTimerCount').textContent = remaining;
+      if (eyeHeld >= target && eyePhase === 1) {
+        eyePhase = 2; eyeHeld = 0;
+        document.getElementById('eyePhraseDisplay').textContent = '"' + cp.phrase2 + '"';
+        document.getElementById('eyeTimerCount').textContent    = cp.eyeTime2;
+        document.getElementById('eyePhaseLabel').textContent    = 'Now say Phrase 2 — maintain eye contact';
+        document.getElementById('exerciseFeedback').textContent = '✦ Phrase 1 done! Now: "' + cp.phrase2 + '"';
+      } else if (eyeHeld >= target && eyePhase === 2) {
+        clearInterval(scoringInterval);
+        currentAccuracy = 90;
+        onPassed();
+        return;
+      }
+    }
+
+    // Body-speech alignment tracking (exercise 3)
+    if (cp.evaluator === 'body_speech_match' && mpLandmarks) {
+      if (prevLandmarks) {
+        const motion = [15,16,13,14].reduce((sum, i) => {
+          if (mpLandmarks[i] && prevLandmarks[i])
+            return sum + Math.abs(mpLandmarks[i].x - prevLandmarks[i].x) + Math.abs(mpLandmarks[i].y - prevLandmarks[i].y);
+          return sum;
+        }, 0);
+        motionHistory.push({ motion, speaking: isSpeaking });
+        if (motionHistory.length > 20) motionHistory.shift();
+      }
+      prevLandmarks = mpLandmarks.map(l => ({ x: l.x, y: l.y }));
+    }
+
+    const composite = computeComposite(cp.evaluator, motionHistory);
+    currentAccuracy = composite;
+    setAccuracy(composite);
+    updateFeedback(composite, cp.evaluator, isSpeaking, eyePhase);
+
+    if (cp.evaluator !== 'eye_contact_speech') {
+      if (composite >= PASS_THRESHOLD && elapsed >= 2.5) {
+        clearInterval(scoringInterval); onPassed();
+      }
+    }
+    if (elapsed >= 70) { clearInterval(scoringInterval); onFailed(); }
+  }, 600);
+}
+
+function computeComposite(evaluator, motionHistory) {
+  if (evaluator === 'eye_contact_speech') {
+    return Math.min(100, Math.round(models.mediapipe.score * 0.6 + models.lighting.score * 0.4));
+  }
+  if (evaluator === 'body_speech_match' && motionHistory && motionHistory.length > 5) {
+    const speakAndMove  = motionHistory.filter(f => f.speaking && f.motion > 0.015).length;
+    const noSpeakStill  = motionHistory.filter(f => !f.speaking && f.motion <= 0.01).length;
+    return Math.min(100, Math.round(((speakAndMove + noSpeakStill) / motionHistory.length) * 80 + 20));
+  }
+  let totalW = 0, sum = 0;
+  for (const key of Object.keys(models)) {
+    const m = models[key];
+    if (m.score > 0 || m.loaded) { sum += m.score * m.weight; totalW += m.weight; }
+  }
+  return totalW === 0 ? 0 : Math.round(Math.min(100, sum / totalW));
+}
+
+function scoreMediaPipe(lm, evaluator, isSpeaking) {
+  const vis  = idx => lm[idx] && lm[idx].visibility > 0.5;
+  const dist = (a, b) => Math.sqrt(Math.pow(lm[a].x-lm[b].x,2)+Math.pow(lm[a].y-lm[b].y,2));
+
+  if (evaluator === 'open_posture') {
+    if (!vis(11)||!vis(12)) return 10;
+    const shoulderDiff  = Math.abs(lm[11].y - lm[12].y);
+    const headAbove     = lm[0].y < (lm[11].y + lm[12].y) / 2;
+    const shoulderWidth = dist(11, 12);
+    const palmsVisible  = vis(15) && vis(16);
+    const wristFwd      = palmsVisible && (lm[15].z < lm[11].z + 0.1) && (lm[16].z < lm[12].z + 0.1);
+    let s = 0;
+    s += shoulderDiff < 0.035 ? 28 : shoulderDiff < 0.07 ? 16 : 5;
+    s += headAbove   ? 20 : 6;
+    s += shoulderWidth > 0.18 ? 12 : 7;
+    s += palmsVisible ? 22 : 5;
+    s += wristFwd     ? 15 : 3;
+    s += vis(23)&&vis(24) ? 3 : 0;
+    return Math.min(100, s);
+
+  } else if (evaluator === 'eye_contact_speech') {
+    if (!vis(0)) return 10;
+    const faceCentred = Math.abs(lm[0].x - 0.5) < 0.18;
+    const faceLevel   = vis(7)&&vis(8) ? Math.abs(lm[7].y - lm[8].y) < 0.04 : true;
+    let s = 0;
+    s += faceCentred ? 55 : 20;
+    s += faceLevel   ? 25 : 10;
+    s += vis(0)      ? 20 : 5;
+    return Math.min(100, s);
+
+  } else if (evaluator === 'body_speech_match') {
+    if (!vis(11)||!vis(12)) return 10;
+    const shldrDiff = Math.abs(lm[11].y - lm[12].y);
+    const armsVis   = vis(13)&&vis(14)&&vis(15)&&vis(16);
+    let s = 0;
+    s += shldrDiff < 0.05 ? 30 : 15;
+    s += armsVis   ? 40 : 15;
+    s += vis(0)    ? 20 : 8;
+    s += 10;
+    return Math.min(100, s);
+
+  } else {
+    return Math.min(100, Math.round((lm.filter(l=>l.visibility>0.55).length/22)*100));
+  }
+}
+
+function scorePoseNet(pose, evaluator, isSpeaking) {
+  if (!pose || !pose.keypoints) return 0;
+  const kp = {};
+  pose.keypoints.forEach(k => { kp[k.part] = k; });
+  const has    = part => kp[part] && kp[part].score > 0.45;
+  const avgConf = pose.keypoints.reduce((s,k)=>s+k.score,0) / pose.keypoints.length;
+  if (avgConf < 0.3) return 0;
+
+  if (evaluator === 'open_posture') {
+    if (!has('leftShoulder')||!has('rightShoulder')) return 10;
+    const shldrDiff = Math.abs(kp.leftShoulder.position.y - kp.rightShoulder.position.y);
+    const wristsVis = has('leftWrist') && has('rightWrist');
+    const headUp    = has('nose') && kp.nose.position.y < kp.leftShoulder.position.y;
+    let s = 0;
+    s += shldrDiff < 15 ? 30 : shldrDiff < 30 ? 18 : 7;
+    s += headUp   ? 20 : 8;
+    s += wristsVis ? 35 : 10;
+    s += avgConf > 0.6 ? 15 : 7;
+    return Math.min(100, s);
+
+  } else if (evaluator === 'eye_contact_speech') {
+    let s = 0;
+    s += has('nose')    ? 50 : 15;
+    s += has('leftEye')&&has('rightEye') ? 35 : 10;
+    s += avgConf > 0.6  ? 15 : 7;
+    return Math.min(100, s);
+
+  } else if (evaluator === 'body_speech_match') {
+    const armsVis = has('leftWrist')&&has('rightWrist')&&has('leftElbow')&&has('rightElbow');
+    let s = 0;
+    s += armsVis   ? 50 : 20;
+    s += has('nose') ? 25 : 10;
+    s += avgConf > 0.6 ? 15 : 7;
+    s += 10;
+    return Math.min(100, s);
+
+  } else {
+    return Math.min(100, Math.round(avgConf * 100));
+  }
+}
+
+function scoreLighting() {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 80; c.height = 60;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(camFeed, 0, 0, 80, 60);
+    const px = ctx.getImageData(0, 0, 80, 60).data;
+    let total = 0, min = 255, max = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      const lum = 0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2];
+      total += lum;
+      if (lum < min) min = lum;
+      if (lum > max) max = lum;
+    }
+    const avg = total / (px.length / 4), contrast = max - min;
+    let s = 0;
+    s += (avg >= 90 && avg <= 180) ? 55 : (avg >= 60 && avg <= 210) ? 35 : (avg >= 40 && avg <= 230) ? 18 : 5;
+    s += contrast >= 100 ? 30 : contrast >= 60 ? 20 : contrast >= 30 ? 10 : 3;
+    if (max < 250 && min > 10) s += 15;
+    return Math.min(100, s);
+  } catch(e) { return 60; }
+}
+
+function setChipActive(name, score) {
+  const chip = document.getElementById('chip-' + name);
+  if (chip) chip.className = 'ai-status-chip active';
+  const el = document.getElementById('score-' + name);
+  if (el) el.textContent = Math.round(score) + '%';
+}
+function setChipFailed(name) {
+  const chip = document.getElementById('chip-' + name);
+  if (chip) chip.className = 'ai-status-chip failed';
+  const el = document.getElementById('score-' + name);
+  if (el) el.textContent = 'N/A';
+}
+function resetChips() {
+  ['mediapipe','posenet','lighting'].forEach(n => {
+    const chip = document.getElementById('chip-' + n);
+    if (chip) chip.className = 'ai-status-chip loading';
+    const el = document.getElementById('score-' + n);
+    if (el) el.textContent = '…';
+  });
+}
+function setAccuracy(pct) {
+  pct = Math.max(0, Math.min(100, Math.round(pct)));
+  document.getElementById('accuracyValue').textContent = pct + '%';
+  document.getElementById('accuracyFill').style.width  = pct + '%';
+  document.getElementById('accuracyFill').style.background =
+    pct >= PASS_THRESHOLD ? 'linear-gradient(90deg,#60c060,#40a040)' :
+    pct >= 60             ? 'linear-gradient(90deg,var(--wood-honey),var(--gold))' :
+                            'linear-gradient(90deg,#8b4020,#c05030)';
+}
+
+function updateFeedback(acc, evaluator, isSpeaking, eyePhase) {
+  const el = document.getElementById('exerciseFeedback');
+  if (acc < 20) { el.textContent = 'Make sure your full body is visible and well lit…'; return; }
+
+  if (evaluator === 'open_posture') {
+    if      (acc < 40) el.textContent = 'Stand up, open your chest, and show your palms facing the camera.';
+    else if (acc < 60) el.textContent = 'Straighten your shoulders and face your palms outward.';
+    else if (acc < PASS_THRESHOLD) el.textContent = 'Almost — hold that open, upright posture steadily…';
+    else               el.textContent = '✦ Open posture confirmed!';
+
+  } else if (evaluator === 'eye_contact_speech') {
+    if (!isSpeaking) {
+      el.textContent = eyePhase === 1
+        ? 'Start speaking: "Did you know that George Washington has done this and that"' 
+        : 'Now say: "That is amazing!" — keep looking at the camera';
+    } else {
+      el.textContent = eyePhase === 1
+        ? '👁 Good — keep speaking and hold eye contact for 5 seconds…'
+        : '👁 Almost — hold eye contact for 7 seconds while finishing the phrase!';
+    }
+
+  } else if (evaluator === 'body_speech_match') {
+    if      (acc < 40) el.textContent = 'Speak naturally and gesture with your hands as you talk.';
+    else if (acc < 60) el.textContent = 'Good — make more deliberate gestures that match your words.';
+    else if (acc < PASS_THRESHOLD) el.textContent = 'Nice — keep your body and speech moving together…';
+    else               el.textContent = '✦ Body and speech aligned!';
+  }
+}
+
+function showEncourageAndRetry() {
+  const el = document.getElementById('exerciseFeedback');
+  el.textContent = '💪 Come on, you can do it! Try again…';
+  el.style.color = 'var(--gold)';
+  document.getElementById('tryAgainBtn').style.display = 'none';
+  setTimeout(() => {
+    el.style.color = '';
+    mpLandmarks = null; pnPose = null;
+    setAccuracy(0); resetChips();
+    startScoring(nextCheckpoint);
+  }, 2200);
+}
+
+function onPassed() {
+  const msgs = [
+    'All AI models confirmed outstanding form — remarkable!',
+    'MediaPipe and PoseNet both detected excellent alignment. Superb!',
+    'Excellent — your posture scored above 80% across all evaluators!',
+    'Brilliant — your body language commands real presence.'
+  ];
+  document.getElementById('congratsMsg').textContent = msgs[Math.floor(Math.random()*msgs.length)];
+  document.getElementById('congratsDetail').textContent = 'Wow, that is amazing! ✦';
+  recordTrial(currentAccuracy, true);
+  stopCamera();
+  overlay.classList.add('hidden');
+  document.getElementById('congratsPopup').classList.remove('hidden');
+}
+function onFailed() {
+  recordTrial(currentAccuracy, false);
+  showEncourageAndRetry();
+}
+function retryExercise() {
+  document.getElementById('tryAgainBtn').style.display = 'none';
+  mpLandmarks = null; pnPose = null;
+  setAccuracy(0); resetChips();
+  startScoring(nextCheckpoint);
+}
+function replayInstructions() {
+function replayInstructions() {
+  stopCamera();
+  overlay.classList.add('hidden');
+  exerciseActive = false;
+  clearInterval(scoringInterval);
+  mpLandmarks = null; pnPose = null;
+  video.currentTime = CHECKPOINTS[nextCheckpoint].replayTime;
+  video.play();
+  showToast('Replaying instructions — exercise will pause again when reached.');
+}
+function skipExercise() {
+  stopCamera(); overlay.classList.add('hidden');
+  exerciseActive = false; nextCheckpoint++; video.play();
+}
+function continueVideo() {
+  document.getElementById('congratsPopup').classList.add('hidden');
+  exerciseActive = false; nextCheckpoint++; video.play();
+}
+function recordTrial(accuracy, passed) {
+  trials.push({ accuracy, passed });
+  document.getElementById('trialCount').textContent  = trials.length;
+  document.getElementById('passCount').textContent   = trials.filter(x=>x.passed).length;
+  document.getElementById('avgAccuracy').textContent = Math.round(trials.reduce((s,x)=>s+x.accuracy,0)/trials.length)+'%';
+  const history = JSON.parse(localStorage.getItem('tp_history')||'[]');
+  history.push({ type: SESSION_TYPE, accuracy, passed, timestamp: new Date().toISOString() });
+  localStorage.setItem('tp_history', JSON.stringify(history));
+  authFetch(API_BASE + '/history',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:SESSION_TYPE,accuracy,passed})}).catch(()=>{});
+}
+
+  // ── Fix 1: preventPlay at module scope so removeEventListener can detach it ──
+  const SESSION_KEY = 'bodypostures';
+  let _mainVideo = null;
+  function _preventVideoPlay(e) { e.preventDefault(); if (_mainVideo) _mainVideo.pause(); }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    _mainVideo = document.getElementById('mainVideo');
+    _mainVideo.controls = false;
+    _mainVideo.addEventListener('play', _preventVideoPlay);
+
+    runEnvironmentCheck('camera', () => {
+      _mainVideo.removeEventListener('play', _preventVideoPlay);
+      _mainVideo.controls = true;
+      const saved = loadSessionProgress(SESSION_KEY);
+      if (saved && saved.checkpointIndex > 0) {
+        document.getElementById('resumeMsg').textContent =
+          'You reached checkpoint ' + saved.checkpointIndex + ' last time. Resume from there?';
+        document.getElementById('resumePopup').classList.remove('hidden');
+      }
+    });
+  });
+
+  // CDN offline detection — show warning if key libraries aren't loaded after 8s
+  setTimeout(() => {
+    const isCameraPage = document.getElementById('camFeed') !== null;
+    const isMicPage    = document.getElementById('waveformCanvas') !== null;
+    let missing = false;
+    if (isCameraPage) {
+      if (typeof Pose === 'undefined' && typeof faceapi === 'undefined' && typeof FaceMesh === 'undefined') missing = true;
+    }
+    // Mic page uses only Web Audio API — always available, no CDN needed
+    if (missing) {
+      const banner = document.getElementById('cdnWarningBanner');
+      if (banner) banner.style.display = 'block';
+    }
+  }, 8000);
+
+  // ── Fix 3: Session resume / auto-save ──
+  let _autoSaveInterval = null;
+
+  function startAutoSave() {
+    clearInterval(_autoSaveInterval);
+    _autoSaveInterval = setInterval(() => {
+      if (!exerciseActive && video.currentTime > 2) {
+        saveSessionProgress(SESSION_KEY, nextCheckpoint, video.currentTime);
+      }
+    }, 5000);
+  }
+
+  function resumeSession() {
+    const saved = loadSessionProgress(SESSION_KEY);
+    document.getElementById('resumePopup').classList.add('hidden');
+    if (saved) {
+      nextCheckpoint = saved.checkpointIndex;
+      video.currentTime = saved.videoTime;
+    }
+    video.play();
+    startAutoSave();
+  }
+
+  function startFresh() {
+    clearSessionProgress(SESSION_KEY);
+    document.getElementById('resumePopup').classList.add('hidden');
+    nextCheckpoint = 0;
+    video.currentTime = 0;
+    video.play();
+    startAutoSave();
+  }
+
+  // Clear progress when all checkpoints are done
+  video.addEventListener('ended', () => {
+    clearSessionProgress(SESSION_KEY);
+    clearInterval(_autoSaveInterval);
+  });
+</script>
+</body>
+</html>

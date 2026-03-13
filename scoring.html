@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+  <meta name="robots" content="noai, noimageai">
+  <meta name="copyright" content="TeenagerPlaybook. All rights reserved.">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeenagerPlaybook — MYP Assessment</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Cinzel:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:        #0e0c0a;
+    --parchment:  #f5f0e8;
+    --cream:      #faf7f2;
+    --gold:       #8b6914;
+    --gold-light: #c4961f;
+    --gold-faint: #e8d9a0;
+    --rule:       #c8b87a;
+    --rule-faint: #e0d4a8;
+    --text:       #1a1510;
+    --text-mid:   #3d3020;
+    --text-muted: #6b5a3a;
+    --band1:      #f9f3e8;
+    --band2:      #f4eed8;
+    --band3:      #ede4c8;
+    --band4:      #e5d9b4;
+    --score-none: #d4c8a0;
+    --score-sel:  #8b6914;
+  }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+
+  body {
+    background: var(--cream);
+    color: var(--text);
+    font-family: 'EB Garamond', serif;
+    min-height: 100vh;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(180,160,100,0.08) 28px),
+      radial-gradient(ellipse at 50% 0%, rgba(200,180,120,0.12) 0%, transparent 70%);
+  }
+
+  /* ── HEADER ── */
+  .site-header {
+    background: var(--ink);
+    padding: 48px 40px 36px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .site-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent, transparent 8px,
+      rgba(180,150,60,0.04) 8px, rgba(180,150,60,0.04) 9px
+    );
+  }
+  .header-rule {
+    width: 80px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
+    margin: 0 auto 20px;
+  }
+  .site-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    font-weight: 500;
+    color: #f0e8d0;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  .site-subtitle {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(0.95rem, 2.5vw, 1.2rem);
+    color: #b8a060;
+    letter-spacing: 0.04em;
+    position: relative;
+  }
+  .header-ornament {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    font-size: 1rem;
+    letter-spacing: 0.3em;
+    margin-top: 16px;
+    position: relative;
+  }
+
+  /* ── INSTRUCTIONS ── */
+  .instructions {
+    max-width: 760px;
+    margin: 36px auto 0;
+    padding: 0 24px;
+  }
+  .instr-box {
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--gold);
+    background: var(--parchment);
+    padding: 24px 28px;
+    position: relative;
+  }
+  .instr-box::before {
+    content: '§';
+    font-family: 'Cinzel', serif;
+    font-size: 1.8rem;
+    color: var(--gold-faint);
+    position: absolute;
+    top: 12px; right: 20px;
+  }
+  .instr-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .instr-text {
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: var(--text-mid);
+  }
+
+  /* ── SCORE TOTAL DISPLAY ── */
+  .score-display {
+    max-width: 760px;
+    margin: 24px auto 0;
+    padding: 0 24px;
+  }
+  .score-card {
+    background: var(--ink);
+    color: #f0e8d0;
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .score-card-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    color: #b8a060;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .score-card-total {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 3rem;
+    font-weight: 300;
+    line-height: 1;
+    color: #f0e8d0;
+  }
+  .score-card-total span {
+    font-size: 1.4rem;
+    color: #b8a060;
+    margin-left: 4px;
+  }
+  .score-card-grade {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    padding: 6px 16px;
+    border: 1px solid;
+    border-radius: 2px;
+  }
+  .score-card-grade.grade-1 { border-color: #666; color: #888; }
+  .score-card-grade.grade-2 { border-color: #8b7020; color: #c4a030; }
+  .score-card-grade.grade-3 { border-color: #8b8020; color: #d4c040; }
+  .score-card-grade.grade-4 { border-color: #408040; color: #60c060; }
+  .score-card-grade.grade-5 { border-color: #30a060; color: #50d080; }
+  .score-card-grade.grade-6 { border-color: #208060; color: #40c090; }
+  .score-card-grade.grade-7 { border-color: #a08020; color: #e0c040; }
+
+  .score-bars {
+    display: flex;
+    gap: 4px;
+    align-items: flex-end;
+    height: 40px;
+  }
+  .score-bar {
+    width: 14px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 1px;
+    transition: background 0.3s, height 0.3s;
+    position: relative;
+  }
+  .score-bar.filled { background: var(--gold-light); }
+
+  /* ── CRITERIA SECTIONS ── */
+  .criteria-wrap {
+    max-width: 760px;
+    margin: 32px auto 40px;
+    padding: 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .criterion-card {
+    border: 1px solid var(--rule);
+    background: var(--parchment);
+    position: relative;
+    overflow: hidden;
+  }
+  .criterion-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--rule);
+    transition: background 0.3s;
+  }
+  .criterion-card.scored::before { background: var(--gold); }
+
+  .criterion-header {
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid var(--rule-faint);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .criterion-num {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    color: var(--gold);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .criterion-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+  }
+  .criterion-score-badge {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--text-muted);
+    line-height: 1;
+    white-space: nowrap;
+    transition: color 0.3s;
+  }
+  .criterion-score-badge.selected { color: var(--gold); }
+  .criterion-score-badge .badge-max { font-size: 1rem; color: var(--text-muted); }
+
+  /* ── BAND GRID ── */
+  .band-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--rule-faint);
+  }
+
+  .band-col {
+    border-right: 1px solid var(--rule-faint);
+    cursor: pointer;
+    transition: background 0.2s;
+    position: relative;
+  }
+  .band-col:last-child { border-right: none; }
+  .band-col:hover { background: rgba(180,150,60,0.07); }
+  .band-col.active { background: rgba(180,150,60,0.14); }
+
+  .band-header {
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--rule-faint);
+    background: rgba(0,0,0,0.025);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .band-range {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+  .band-check {
+    width: 16px; height: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .band-col.active .band-check {
+    background: var(--gold);
+    border-color: var(--gold);
+  }
+  .band-check-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .band-col.active .band-check-dot { opacity: 1; }
+
+  .band-body {
+    padding: 12px 14px 16px;
+  }
+  .band-descriptor {
+    font-family: 'EB Garamond', serif;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--text-mid);
+  }
+  .band-descriptor p { margin-bottom: 6px; }
+  .band-descriptor p:last-child { margin-bottom: 0; }
+  .band-descriptor .descriptor-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 4px;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── NOTES ── */
+  .criterion-notes {
+    padding: 12px 24px 16px;
+    border-top: 1px solid var(--rule-faint);
+    background: rgba(0,0,0,0.018);
+  }
+  .notes-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .notes-input {
+    width: 100%;
+    font-family: 'EB Garamond', serif;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--text);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--rule-faint);
+    outline: none;
+    padding: 4px 0;
+    resize: none;
+    min-height: 36px;
+    transition: border-color 0.2s;
+  }
+  .notes-input:focus { border-color: var(--gold); }
+  .notes-input::placeholder { color: var(--rule); font-style: italic; }
+
+  /* ── ACTIONS ── */
+  .actions-bar {
+    max-width: 760px;
+    margin: 0 auto 60px;
+    padding: 0 24px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .btn-primary {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: #f0e8d0;
+    border: 1px solid var(--gold);
+    padding: 12px 28px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover { background: var(--gold); color: var(--ink); }
+  .btn-secondary {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--rule);
+    padding: 12px 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* ── PRINT MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(10,8,5,0.75);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--cream);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--gold);
+    max-width: 560px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 32px 36px;
+  }
+  .modal-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule-faint);
+  }
+  .modal-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--rule-faint);
+    align-items: baseline;
+  }
+  .modal-row-name {
+    font-family: 'EB Garamond', serif;
+    font-size: 0.9rem;
+    color: var(--text-mid);
+    max-width: 65%;
+  }
+  .modal-row-score {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+  }
+  .modal-row-note {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    width: 100%;
+    padding: 4px 0 8px;
+  }
+  .modal-total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 0 8px;
+    align-items: baseline;
+    border-top: 2px solid var(--rule);
+    margin-top: 4px;
+  }
+  .modal-total-label { font-family:'Cinzel',serif; font-size:0.85rem; letter-spacing:0.1em; color:var(--ink); }
+  .modal-total-score { font-family:'Cormorant Garamond',serif; font-size:2.2rem; font-weight:300; color:var(--gold); }
+  .modal-grade-line  { font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:0.12em; color:var(--text-muted); text-align:right; margin-top:4px; }
+  .modal-actions { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
+
+  /* ── DIVIDER ── */
+  .gold-divider {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--rule), transparent);
+    margin-bottom: 24px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .band-grid { grid-template-columns: 1fr 1fr; }
+    .band-col { border-bottom: 1px solid var(--rule-faint); }
+    .criterion-header { flex-direction: column; }
+    .site-header { padding: 32px 20px 24px; }
+    .score-card { flex-direction: column; gap: 12px; }
+  }
+
+  @media print {
+    body { background: white; }
+    .actions-bar, .btn-primary, .btn-secondary { display: none !important; }
+    .criterion-card { break-inside: avoid; }
+    .site-header { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-rule"></div>
+  <h1 class="site-title">TEENAGERPLAYBOOK</h1>
+  <p class="site-subtitle">MYP Personal Project — Criterion Assessment</p>
+  <p class="header-ornament">✦ &nbsp; &nbsp; ✦ &nbsp; &nbsp; ✦</p>
+</header>
+
+<div class="instructions">
+  <div class="instr-box">
+    <p class="instr-title">How to use this rubric</p>
+    <p class="instr-text">Select the appropriate score band for each criterion by clicking on it. The total score and IB grade boundary are calculated automatically. Add optional notes per criterion. Use the <em>Generate Report</em> button to produce a printable summary.</p>
+  </div>
+</div>
+
+<div class="score-display">
+  <div class="score-card">
+    <div>
+      <span class="score-card-label">TOTAL SCORE</span>
+      <div class="score-card-total" id="totalDisplay">0 <span>/ 42</span></div>
+    </div>
+    <div class="score-bars" id="scoreBars"></div>
+    <div>
+      <span class="score-card-label">IB GRADE</span>
+      <div class="score-card-grade grade-1" id="gradeDisplay">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="criteria-wrap" id="criteriaWrap"></div>
+
+<div class="gold-divider"></div>
+
+<div class="actions-bar">
+  <button class="btn-primary" onclick="openReport()">Generate Report ✦</button>
+  <button class="btn-secondary" onclick="resetAll()">Reset All</button>
+</div>
+
+<!-- Report Modal -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal-box">
+    <p class="modal-title">Assessment Report — TeenagerPlaybook</p>
+    <div id="reportBody"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <button class="btn-secondary" onclick="closeReport()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// CRITERIA DATA
+// ════════════════════════════════════════════════════════
+const CRITERIA = [
+  {
+    id: 'aesthetics',
+    title: 'Organization and Aesthetics of the Product',
+    bands: [
+      {
+        range: '1–2',
+        descriptors: [
+          'The website design is superficial in organization and visually unclear.',
+          'Layout, navigation and elements do not support user understanding or engagement.'
+        ]
+      },
+      {
+        range: '3–4',
+        descriptors: [
+          'The website design shows minimum organization and basic visual structure.',
+          'Layout, navigation and elements are inconsistent or only somewhat effective for users.'
+        ]
+      },
+      {
+        range: '5–6',
+        descriptors: [
+          'The website design is organized with a clear layout and sufficient visual design.',
+          'Layout, navigation and elements support user understanding and engagement.'
+        ]
+      },
+      {
+        range: '7–8',
+        descriptors: [
+          'The website design demonstrates excellent organization and aesthetics.',
+          'Layout, navigation and elements are highly effective, visually appealing, and strongly enhance user experience.'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'effectiveness',
+    title: 'Effectiveness',
+    bands: [
+      {
+        range: '1–2',
+        descriptors: [
+          'The website barely has an impact on users and does not effectively influence behavioral understanding or reflection.'
+        ]
+      },
+      {
+        range: '3–4',
+        descriptors: [
+          'The website has a limited impact on users, with some evidence of behavioral awareness but inconsistent effectiveness.'
+        ]
+      },
+      {
+        range: '5–6',
+        descriptors: [
+          'The website effectively influences users\' understanding and reflection on behavior, with clear positive outcomes for most users.'
+        ]
+      },
+      {
+        range: '7–8',
+        descriptors: [
+          'The website has a significantly huge impact on users, strongly promoting behavioral reflection and positive change with consistent evidence of effectiveness.'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'research',
+    title: 'Thorough Research',
+    bands: [
+      {
+        range: '1–2',
+        descriptors: [
+          'Research is limited, inaccurate, or simply irrelevant.',
+          'Sources are poorly selected and lack credibility or connection to the topic.'
+        ]
+      },
+      {
+        range: '3–4',
+        descriptors: [
+          'Research is partially relevant.',
+          'Sources are somewhat limited and lack depth, verification or clear integration into the product.'
+        ]
+      },
+      {
+        range: '5–6',
+        descriptors: [
+          'Research is relevant and accurate.',
+          'Sources are mostly well-integrated into the product, showing clear understanding of key concepts.'
+        ]
+      },
+      {
+        range: '7–8',
+        descriptors: [
+          'Research is extensive, accurate and critically analyzed.',
+          'Sources have strong integration into the product and clear evidence of credibility and relevance.'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'ethics',
+    title: 'Ethics',
+    bands: [
+      {
+        range: '1–2',
+        descriptors: [
+          'Ethical considerations such as privacy and responsibility are not addressed or are inadequately applied in the product.'
+        ]
+      },
+      {
+        range: '3–4',
+        descriptors: [
+          'Ethical aspects are partially considered, but implementation is inconsistent or limited in effectiveness.'
+        ]
+      },
+      {
+        range: '5–6',
+        descriptors: [
+          'Ethical considerations are clearly addressed with appropriate measures taken to ensure privacy, security, and responsible use.'
+        ]
+      },
+      {
+        range: '7–8',
+        descriptors: [
+          'Ethical principles are thoroughly integrated into the product with strong attention to privacy, security and responsible user interaction.'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'structure',
+    title: 'Structure of the Product',
+    bands: [
+      {
+        range: '1–2',
+        descriptors: [
+          'The website structure is poorly developed, with frequent errors, technical issues or unclear organization.'
+        ]
+      },
+      {
+        range: '3–4',
+        descriptors: [
+          'The website structure is partially functional, with some errors or inconsistencies affecting usability.'
+        ]
+      },
+      {
+        range: '5–6',
+        descriptors: [
+          'The website structure is functional and mostly error-free, demonstrating appropriate technical and organizational quality.'
+        ]
+      },
+      {
+        range: '7–8',
+        descriptors: [
+          'The website structure is highly developed, technically sound and efficient with minimal errors and strong functionality.'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'perspectives',
+    title: 'Perspectives',
+    bands: [
+      {
+        range: '1–2',
+        descriptors: [
+          'The product does not consider user perspectives or broader social viewpoints.',
+          'Feedbacks are ignored.'
+        ]
+      },
+      {
+        range: '3–4',
+        descriptors: [
+          'The product considers limited user perspectives.',
+          'Feedbacks are partially integrated.'
+        ]
+      },
+      {
+        range: '5–6',
+        descriptors: [
+          'The product reflects a range of user perspectives.',
+          'Feedbacks clearly influence improvements and development.'
+        ]
+      },
+      {
+        range: '7–8',
+        descriptors: [
+          'The product demonstrates a comprehensive understanding of diverse perspectives.',
+          'Feedbacks are deeply integrated and effectively represented.'
+        ]
+      }
+    ]
+  }
+];
+
+// IB 7-point grade boundaries for total out of 42 (6 criteria × 7 max)
+// Each criterion is 1–8, so max per criterion = 8, total max = 48
+// But this rubric uses band midpoints: 1.5, 3.5, 5.5, 7.5 → effective max = 45
+// Standard MYP-style boundaries scaled to 48:
+const GRADE_BOUNDARIES = [
+  { grade: 7, min: 40, label: '7 — Outstanding' },
+  { grade: 6, min: 34, label: '6 — Excellent' },
+  { grade: 5, min: 27, label: '5 — Good' },
+  { grade: 4, min: 20, label: '4 — Satisfactory' },
+  { grade: 3, min: 14, label: '3 — Partial Achievement' },
+  { grade: 2, min: 8,  label: '2 — Below Expectations' },
+  { grade: 1, min: 0,  label: '1 — Minimal Achievement' }
+];
+
+// State
+const state = {};
+CRITERIA.forEach(c => { state[c.id] = { band: null, notes: '' }; });
+
+// ── Render criteria ──
+function render() {
+  const wrap = document.getElementById('criteriaWrap');
+  wrap.innerHTML = '';
+
+  CRITERIA.forEach((crit, ci) => {
+    const sel   = state[crit.id].band;
+    const card  = document.createElement('div');
+    card.className = 'criterion-card' + (sel !== null ? ' scored' : '');
+    card.id        = 'crit-' + crit.id;
+
+    // Score value for selected band (use upper end of range: 2, 4, 6, 8)
+    const bandScores = [2, 4, 6, 8];
+    const scoreVal   = sel !== null ? bandScores[sel] : null;
+
+    card.innerHTML = `
+      <div class="criterion-header">
+        <div>
+          <span class="criterion-num">Criterion ${ci + 1}</span>
+          <span class="criterion-title">${crit.title}</span>
+        </div>
+        <div class="criterion-score-badge ${sel !== null ? 'selected' : ''}">
+          ${sel !== null ? bandScores[sel] : '—'}<span class="badge-max"> / 8</span>
+        </div>
+      </div>
+      <div class="band-grid">
+        ${crit.bands.map((band, bi) => `
+          <div class="band-col ${sel === bi ? 'active' : ''}" onclick="selectBand('${crit.id}', ${bi})">
+            <div class="band-header">
+              <span class="band-range">${band.range}</span>
+              <div class="band-check"><div class="band-check-dot"></div></div>
+            </div>
+            <div class="band-body">
+              <div class="band-descriptor">
+                ${band.descriptors.map(d => `<p>${d}</p>`).join('')}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="criterion-notes">
+        <p class="notes-label">Evaluator Notes</p>
+        <textarea class="notes-input" placeholder="Add justification or comments…" rows="2"
+          onchange="updateNotes('${crit.id}', this.value)">${state[crit.id].notes}</textarea>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+
+  updateTotal();
+}
+
+function selectBand(critId, bandIndex) {
+  // Toggle off if clicking the same band
+  if (state[critId].band === bandIndex) {
+    state[critId].band = null;
+  } else {
+    state[critId].band = bandIndex;
+  }
+  render();
+}
+
+function updateNotes(critId, val) {
+  state[critId].notes = val;
+}
+
+function updateTotal() {
+  const bandScores = [2, 4, 6, 8];
+  let total = 0;
+  CRITERIA.forEach(c => {
+    if (state[c.id].band !== null) total += bandScores[state[c.id].band];
+  });
+
+  document.getElementById('totalDisplay').innerHTML = `${total} <span>/ 48</span>`;
+
+  // Grade
+  let grade = GRADE_BOUNDARIES[GRADE_BOUNDARIES.length - 1];
+  for (const b of GRADE_BOUNDARIES) {
+    if (total >= b.min) { grade = b; break; }
+  }
+  const gradeEl = document.getElementById('gradeDisplay');
+  gradeEl.textContent = grade.label;
+  gradeEl.className   = 'score-card-grade grade-' + grade.grade;
+
+  // Score bars
+  const bars = document.getElementById('scoreBars');
+  bars.innerHTML = '';
+  const maxBars = 12;
+  const filled  = Math.round((total / 48) * maxBars);
+  for (let i = 0; i < maxBars; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'score-bar' + (i < filled ? ' filled' : '');
+    const heightPct = 30 + ((i / maxBars) * 70);
+    bar.style.height = heightPct + '%';
+    bars.appendChild(bar);
+  }
+}
+
+function resetAll() {
+  if (!confirm('Reset all scores and notes?')) return;
+  CRITERIA.forEach(c => { state[c.id] = { band: null, notes: '' }; });
+  render();
+}
+
+// ── Report modal ──
+function openReport() {
+  const bandScores = [2, 4, 6, 8];
+  const bandLabels = ['1–2', '3–4', '5–6', '7–8'];
+  let total = 0;
+  let html  = '';
+
+  CRITERIA.forEach((c, i) => {
+    const sel   = state[c.id].band;
+    const score = sel !== null ? bandScores[sel] : '—';
+    const range = sel !== null ? bandLabels[sel] : 'Not scored';
+    if (sel !== null) total += bandScores[sel];
+
+    html += `
+      <div class="modal-row">
+        <span class="modal-row-name">${c.title}</span>
+        <span class="modal-row-score">${score} / 8 &nbsp;(${range})</span>
+      </div>
+      ${state[c.id].notes ? `<div class="modal-row-note">${state[c.id].notes}</div>` : ''}
+    `;
+  });
+
+  let grade = GRADE_BOUNDARIES[GRADE_BOUNDARIES.length - 1];
+  for (const b of GRADE_BOUNDARIES) { if (total >= b.min) { grade = b; break; } }
+
+  html += `
+    <div class="modal-total-row">
+      <span class="modal-total-label">TOTAL SCORE</span>
+      <span class="modal-total-score">${total} <span style="font-size:1.1rem;color:var(--text-muted)">/ 48</span></span>
+    </div>
+    <div class="modal-grade-line">${grade.label}</div>
+    <p style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.8rem;color:var(--text-muted);margin-top:14px;text-align:center;">
+      Generated ${new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}
+    </p>
+  `;
+
+  document.getElementById('reportBody').innerHTML = html;
+  document.getElementById('reportModal').classList.add('open');
+}
+
+function closeReport() {
+  document.getElementById('reportModal').classList.remove('open');
+}
+
+// Close modal on backdrop click
+document.getElementById('reportModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeReport();
+});
+
+// Init
+render();
+</script>
+</body>
+</html>

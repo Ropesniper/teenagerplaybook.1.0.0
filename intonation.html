@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noai, noimageai">
+  <meta name="copyright" content="TeenagerPlaybook. All rights reserved.">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intonation — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/env-check.js"></script>
+  <style>
+    .ai-status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      width: 100%;
+      max-width: 380px;
+    }
+    .ai-status-chip {
+      background: rgba(20,10,4,0.6);
+      border: 1px solid var(--wood-mid);
+      border-radius: 8px;
+      padding: 5px 6px;
+      text-align: center;
+    }
+    .ai-status-chip .chip-name  { font-family:'Cinzel',serif; font-size:0.56rem; letter-spacing:0.04em; color:var(--text-dim); display:block; margin-bottom:2px; }
+    .ai-status-chip .chip-score { font-family:'Cinzel',serif; font-size:0.82rem; color:var(--gold); }
+    .ai-status-chip .chip-sub   { font-family:'Libre Baskerville',serif; font-size:0.58rem; color:var(--text-dim); font-style:italic; display:block; margin-top:2px; }
+    .ai-status-chip.active  { border-color: var(--gold-dim); }
+    .ai-status-chip.loading { border-color: #8b6020; }
+    .composite-label { font-family:'Cinzel',serif; font-size:0.7rem; color:var(--gold-dim); letter-spacing:0.1em; text-align:center; margin-bottom:4px; }
+  </style>
+</head>
+<body>
+
+<script src="js/auth-guard.js"></script>
+<script>const _sess = requireAuth();</script>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="history.html">History</a>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+  <p class="title-main">Intonation</p>
+  <p class="title-sub">The rise and fall of your voice carries your meaning</p>
+  <hr class="gold-rule">
+
+  <div class="wood-panel mb-24">
+    <h3 class="panel-label">📋 How This Session Works</h3>
+    <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.8;">
+      Watch the video — it pauses at vocal exercises. <strong style="color:var(--gold);">Four audio analysis engines</strong> evaluate your voice simultaneously: Autocorrelation pitch tracking, FFT Spectral Analysis, RMS Energy Envelope, and Zero-Crossing Rate. Together they measure pitch pattern, vocal richness, stress dynamics, and consonant emphasis. Reach <strong style="color:var(--gold);">80%</strong> to pass.
+    </p>
+    <div class="check-row mt-16">
+      <input type="checkbox" id="micPermCheck">
+      <label for="micPermCheck" style="color:var(--text-muted);font-size:0.88rem;">
+        I allow microphone access — audio is processed entirely in the browser, never stored.
+      </label>
+    </div>
+  </div>
+
+
+  <!-- CDN offline warning — shown automatically if AI libraries fail to load -->
+  <div id="cdnWarningBanner" style="display:none;background:rgba(80,20,10,0.5);border:1px solid rgba(180,60,40,0.5);border-radius:10px;padding:12px 18px;margin-bottom:16px;text-align:center;">
+    <p style="font-family:'Cinzel',serif;font-size:0.78rem;color:#e08060;letter-spacing:0.06em;margin-bottom:4px;">⚠ AI LIBRARIES UNAVAILABLE</p>
+    <p style="font-family:'Libre Baskerville',serif;font-size:0.82rem;color:var(--text-muted);line-height:1.5;">Could not reach cdn.jsdelivr.net. AI models are offline — exercises will run in fallback scoring mode. Check your internet connection and reload for full accuracy.</p>
+  </div>
+
+  <div class="popup-overlay" id="envCheckPopup">
+    <div class="popup-box wood-panel env-popup-box">
+      <p class="popup-title" style="margin-bottom:6px;">Before You Begin — Intonation Session</p>
+      <div style="font-family:'Libre Baskerville',serif;font-size:0.85rem;color:var(--text-muted);text-align:left;margin-bottom:16px;line-height:1.8;">
+        <p style="margin-bottom:8px;font-family:'IM Fell English',serif;font-style:italic;color:var(--gold-dim);">What this session requires:</p>
+        <p>🎤 <strong style="color:var(--text-main);">Microphone access</strong> — your voice is analysed in real time. Audio never leaves your browser.</p>
+        <p>🤖 <strong style="color:var(--text-main);">AI voice analysis</strong> — four engines evaluate pitch, energy, spectral richness, and articulation simultaneously.</p>
+        <p>🔇 <strong style="color:var(--text-main);">Quiet space</strong> — find a room with minimal background noise. Close doors, turn off fans or TV nearby.</p>
+        <p>🗣️ <strong style="color:var(--text-main);">Speak clearly</strong> — you will be asked to say short phrases aloud. A normal speaking voice is fine — no need to shout.</p>
+        <p style="margin-top:10px;">You need to score <strong style="color:var(--gold);">80% or above</strong> to pass each exercise. If you don't, the exercise will loop until you do.</p>
+      </div>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:0.88rem;color:var(--text-muted);text-align:center;margin-bottom:18px;">Now checking your microphone and environment…</p>
+      <div id="envStatus" class="env-status-msg env-status-loading"><span class="env-status-icon">⏳</span> Checking…</div>
+      <div id="envChecklist" class="env-checklist"></div>
+      <div id="envAdvice" style="margin-bottom:16px;"></div>
+      <div class="popup-actions">
+        <button class="btn btn-primary"   id="envStartBtn" style="display:none;">Begin Session ✦</button>
+        <button class="btn btn-secondary" id="envRetryBtn" style="display:none;">Re-check</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="video-wrap">
+    <video id="mainVideo" preload="metadata" playsinline>
+      <source src="https://docs.google.com/uc?export=download&id=1tZPgQdsmvm2niMa6i3TfA3QAX_hFl4zY" type="video/mp4">
+    </video>
+    <div class="video-no-src" id="videoPlaceholder" style="display:none;">
+      <p>Video not yet uploaded. Admin Panel → Upload Video → Intonation.</p>
+    </div>
+
+    <div class="exercise-overlay hidden" id="exerciseOverlay">
+      <p class="exercise-msg" id="exerciseTitle">⏸ Vocal Exercise</p>
+      <p class="exercise-sub" id="exerciseInstruction">Read the phrase below with the described pattern.</p>
+
+      <!-- Phrase display -->
+      <div style="background:rgba(20,10,4,0.7);border:2px solid var(--gold-dim);border-radius:12px;padding:14px 20px;max-width:360px;text-align:center;">
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:1.1rem;color:var(--gold);line-height:1.7;margin-bottom:6px;" id="phraseText">"…"</p>
+        <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--text-dim);letter-spacing:0.06em;" id="intonationHint">Pattern: —</p>
+        <p style="font-family:'Libre Baskerville',serif;font-size:0.82rem;color:var(--gold-dim);margin-top:8px;padding:8px 12px;background:rgba(40,20,8,0.5);border-radius:8px;border:1px solid rgba(180,130,40,0.2);" id="popupNoteEl"></p>
+      </div>
+
+      <!-- Live waveform -->
+      <canvas id="waveformCanvas" style="width:320px;height:70px;border-radius:8px;border:1px solid rgba(212,168,67,0.2);"></canvas>
+
+      <!-- AI Status chips — four engines -->
+      <div class="ai-status-grid">
+        <div class="ai-status-chip loading" id="chip-autocorr">
+          <span class="chip-name">Autocorr Pitch</span>
+          <span class="chip-score" id="score-autocorr">…</span>
+          <span class="chip-sub" id="sub-autocorr">— Hz</span>
+        </div>
+        <div class="ai-status-chip loading" id="chip-fft">
+          <span class="chip-name">FFT Spectral</span>
+          <span class="chip-score" id="score-fft">…</span>
+          <span class="chip-sub" id="sub-fft">harmonics</span>
+        </div>
+        <div class="ai-status-chip loading" id="chip-rms">
+          <span class="chip-name">RMS Energy</span>
+          <span class="chip-score" id="score-rms">…</span>
+          <span class="chip-sub" id="sub-rms">stress</span>
+        </div>
+        <div class="ai-status-chip loading" id="chip-zcr">
+          <span class="chip-name">Zero-Cross</span>
+          <span class="chip-score" id="score-zcr">…</span>
+          <span class="chip-sub" id="sub-zcr">consonants</span>
+        </div>
+      </div>
+
+      <!-- Live readings -->
+      <div style="background:rgba(20,10,4,0.6);border:1px solid var(--gold-dim);border-radius:10px;padding:8px 14px;max-width:360px;text-align:left;">
+        <p style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--gold-dim);letter-spacing:0.08em;margin-bottom:4px;">LIVE READINGS</p>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <span style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--text-dim);">Pitch: <span id="pitchDisplay" style="color:var(--gold);">— Hz</span></span>
+          <span style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--text-dim);">Vol: <span id="volumeDisplay" style="color:var(--gold);">—%</span></span>
+          <span style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--text-dim);">ZCR: <span id="zcrDisplay" style="color:var(--gold);">—</span></span>
+          <span style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--text-dim);">Spoken: <span id="spokenDisplay" style="color:var(--gold);">—s</span></span>
+        </div>
+      </div>
+
+      <!-- Composite bar -->
+      <div class="accuracy-bar-wrap">
+        <p class="composite-label">COMPOSITE SCORE</p>
+        <p class="accuracy-label">Modulation Score: <span id="accuracyValue">0%</span></p>
+        <div class="accuracy-bar"><div class="accuracy-fill" id="accuracyFill"></div></div>
+        <p style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--text-dim);text-align:center;margin-top:4px;letter-spacing:0.06em;">PASS THRESHOLD: 80%</p>
+      </div>
+
+      <!-- Volume bar -->
+      <div class="accuracy-bar-wrap" style="margin-top:0;">
+        <p class="accuracy-label" style="color:var(--text-dim);font-size:0.72rem;">Volume</p>
+        <div class="accuracy-bar" style="height:6px;">
+          <div id="volumeFill" style="height:100%;border-radius:3px;background:linear-gradient(90deg,#4080c0,#60a0e0);width:0%;transition:width 0.1s;"></div>
+        </div>
+      </div>
+
+      <p class="exercise-sub" id="exerciseFeedback" style="color:var(--gold);">Begin reading the phrase aloud…</p>
+
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="replayInstructions()">↩ Replay Instructions</button>
+        <button class="btn btn-primary" id="tryAgainBtn" onclick="retryExercise()" style="display:none;">Try Again</button>
+        <button class="btn btn-secondary" onclick="skipExercise()">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wood-panel mt-24">
+    <h3 class="panel-label">Session Progress</h3>
+    <div class="stat-row">
+      <div class="stat-item"><span class="stat-num" id="trialCount">0</span><span class="stat-name">Trials</span></div>
+      <div class="stat-item"><span class="stat-num" id="passCount">0</span><span class="stat-name">Passed</span></div>
+      <div class="stat-item"><span class="stat-num" id="avgAccuracy">—</span><span class="stat-name">Avg Score</span></div>
+    </div>
+  </div>
+</div>
+
+  <!-- ── Session Resume Popup ── -->
+  <div class="popup-overlay hidden" id="resumePopup">
+    <div class="popup-box wood-panel">
+      <p class="popup-title">Resume Session?</p>
+      <p class="popup-body" id="resumeMsg">You left this session partway through. Would you like to continue from where you stopped?</p>
+      <div class="popup-actions">
+        <button class="btn btn-primary"   onclick="resumeSession()">Resume ✦</button>
+        <button class="btn btn-secondary" onclick="startFresh()">Start from Beginning</button>
+      </div>
+    </div>
+  </div>
+<div class="popup-overlay hidden" id="congratsPopup">
+  <div class="popup-box wood-panel congrats-pop">
+    <p class="confetti-line">🎙️ ✦ 🎙️</p>
+    <p class="popup-title">Excellent Intonation!</p>
+    <p class="popup-body success" id="congratsMsg">All four audio engines confirmed expressive, compelling delivery!</p>
+    <p class="popup-body" id="congratsDetail" style="font-size:1rem;color:var(--gold);font-family:'IM Fell English',serif;font-style:italic;margin-top:4px;"></p>
+    <p class="popup-body" style="font-size:0.82rem;color:var(--text-muted);">The video will continue when you're ready.</p>
+    <div class="popup-actions">
+      <button class="btn btn-primary" onclick="continueVideo()">Continue Video →</button>
+    </div>
+  </div>
+</div>
+
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions"><button class="btn btn-secondary" onclick="closePopup()">Close</button></div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CHECKPOINT CONFIGURATION
+//  pattern: 'emphasis_shift' | 'pause_timing' | 'consistent'
+//  minSpeakSeconds: minimum speaking time before pass can trigger
+// ═══════════════════════════════════════════════════════════════
+const CHECKPOINTS = [
+  {
+    time:             149,   // 2min 29sec
+    replayTime:       135,
+    name:             'Exercise 1 — Shifting Emphasis',
+    instruction:      'Say the phrase three times. Each time, shift the emphasis to a different word.',
+    phrase:           '"That is amazing."',
+    popupNote:        'Say it 3 times — stress THAT first, then IS, then AMAZING.',
+    intonationHint:   'Emphasis shifts: THAT is amazing → that IS amazing → that is AMAZING',
+    pattern:          'emphasis',
+    minSpeakSeconds:  4
+  },
+  {
+    time:             252,   // 4min 12sec
+    replayTime:       238,
+    name:             'Exercise 2 — Deliberate Pause',
+    instruction:      'Say the phrase with a 1-second pause before the word "is".',
+    phrase:           '"That… is amazing."',
+    popupNote:        'Pause for 1 second between "That" and "is".',
+    intonationHint:   'Pattern: THAT [1 sec pause] is amazing — let the pause land.',
+    pattern:          'pause_timing',
+    minSpeakSeconds:  3
+  },
+  {
+    time:             380,   // 6min 20sec
+    replayTime:       366,
+    name:             'Exercise 3 — Consistent Tone',
+    instruction:      'Say the phrase with a steady, flowing tone — not rushing, not flat.',
+    phrase:           '"That is amazing."',
+    popupNote:        'Consistent pace — no rushing, no monotone. Let it breathe.',
+    intonationHint:   'Pattern: smooth, expressive, even — no acceleration, no deadpan.',
+    pattern:          'consistent',
+    minSpeakSeconds:  2.5
+  }
+];
+
+const PASS_THRESHOLD = 80;
+const SESSION_TYPE   = 'intonation';
+
+// ── Engine state — weights sum to 1.0 ──
+const engines = {
+  autocorr: { score: 0, weight: 0.35 },  // primary pitch tracking
+  fft:      { score: 0, weight: 0.25 },  // harmonic richness / spectral tilt
+  rms:      { score: 0, weight: 0.25 },  // energy dynamics / stress
+  zcr:      { score: 0, weight: 0.15 }   // consonant clarity / voiced ratio
+};
+
+// Audio buffers
+let pitchHistory   = [];   // autocorr pitch values over time
+let energyHistory  = [];   // RMS values over time
+let zcrHistory     = [];   // ZCR values
+let fftTiltHistory = [];   // spectral tilt values
+
+let trials = [], micStream = null, audioCtx = null;
+let analyserTime = null, analyserFreq = null;
+let currentAccuracy = 0, scoringInterval = null, waveRaf = null;
+let nextCheckpoint = 0, exerciseActive = false, elapsed = 0;
+
+const video      = document.getElementById('mainVideo');
+const overlay    = document.getElementById('exerciseOverlay');
+const waveCanvas = document.getElementById('waveformCanvas');
+const wCtx       = waveCanvas.getContext('2d');
+
+video.addEventListener('error', () => {
+  document.getElementById('videoPlaceholder').style.display = 'flex';
+  video.style.display = 'none';
+});
+video.addEventListener('timeupdate', () => {
+  if (exerciseActive || nextCheckpoint >= CHECKPOINTS.length) return;
+  // Only trigger the CURRENT checkpoint — never look back at passed ones
+  // This prevents replayInstructions() from re-triggering earlier checkpoints
+  const cp = CHECKPOINTS[nextCheckpoint];
+  if (video.currentTime >= cp.time && video.currentTime <= cp.time + 1.5) {
+    video.pause();
+    startExercise(nextCheckpoint);
+  }
+});
+
+async function startExercise(idx) {
+  exerciseActive = true;
+  const cp = CHECKPOINTS[idx];
+  document.getElementById('exerciseTitle').textContent       = '⏸ ' + cp.name;
+  document.getElementById('exerciseInstruction').textContent = cp.instruction;
+  document.getElementById('phraseText').textContent          = cp.phrase;
+  document.getElementById('intonationHint').textContent      = cp.intonationHint;
+  document.getElementById('popupNoteEl').textContent         = cp.popupNote || '';
+  document.getElementById('exerciseFeedback').textContent    = 'Begin reading the phrase aloud…';
+  document.getElementById('tryAgainBtn').style.display       = 'none';
+  resetChips(); setAccuracy(0);
+  clearBuffers(); elapsed = 0;
+  overlay.classList.remove('hidden');
+
+  if (!document.getElementById('micPermCheck').checked) {
+    document.getElementById('exerciseFeedback').textContent = 'Please tick the microphone consent checkbox above first.';
+    return;
+  }
+  await startMic();
+  startWaveform();
+  startScoring(idx);
+}
+
+async function startMic() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audioCtx.createMediaStreamSource(micStream);
+
+    // Two separate analysers — one for time domain, one for frequency
+    analyserTime = audioCtx.createAnalyser();
+    analyserTime.fftSize              = 4096;  // high resolution for autocorrelation
+    analyserTime.smoothingTimeConstant = 0.6;
+
+    analyserFreq = audioCtx.createAnalyser();
+    analyserFreq.fftSize               = 2048;
+    analyserFreq.smoothingTimeConstant  = 0.75;
+
+    src.connect(analyserTime);
+    src.connect(analyserFreq);
+  } catch(e) {
+    showPopup('Microphone Denied', 'Please allow microphone access in your browser.', 'error');
+  }
+}
+
+function stopMic() {
+  if (micStream)  { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (audioCtx)   { audioCtx.close().catch(()=>{}); audioCtx = null; }
+  analyserTime = null; analyserFreq = null;
+  clearInterval(scoringInterval);
+  clearInterval(_autoSaveInterval); // Fix 3
+  cancelAnimationFrame(waveRaf);
+}
+
+let adaptiveNoiseFloor = 0.012;  // calibrated during first 2s of speech
+let calibrationSamples = [];
+let calibrated = false;
+
+function clearBuffers() {
+  pitchHistory = []; energyHistory = []; zcrHistory = []; fftTiltHistory = [];
+  calibrationSamples = []; calibrated = false;
+  Object.keys(engines).forEach(k => engines[k].score = 0);
+}
+
+// Called during first 2s — samples background ZCR to set adaptive baseline
+function calibrateZCR(zcr, rms) {
+  if (calibrated) return;
+  if (rms < 0.015) {  // only sample silence/near-silence
+    calibrationSamples.push(zcr);
+  }
+  if (elapsed > 2 || calibrationSamples.length >= 8) {
+    calibrated = true;
+    if (calibrationSamples.length > 0) {
+      const bgZCR = calibrationSamples.reduce((a,b)=>a+b,0) / calibrationSamples.length;
+      // voiced threshold = background ZCR + 80 (to distinguish speech from noise)
+      window._voicedZCRThreshold = bgZCR + 80;
+      window._consonantZCRThreshold = bgZCR + 280;
+    } else {
+      window._voicedZCRThreshold   = 200;
+      window._consonantZCRThreshold = 350;
+    }
+  }
+}
+
+// ── Waveform visualiser ──
+function startWaveform() {
+  if (!analyserTime) return;
+  waveCanvas.width  = waveCanvas.offsetWidth  || 320;
+  waveCanvas.height = waveCanvas.offsetHeight || 70;
+  const buf = new Uint8Array(analyserTime.frequencyBinCount);
+
+  function draw() {
+    waveRaf = requestAnimationFrame(draw);
+    analyserTime.getByteTimeDomainData(buf);
+    wCtx.fillStyle = '#1a0e08';
+    wCtx.fillRect(0, 0, waveCanvas.width, waveCanvas.height);
+    wCtx.lineWidth   = 2;
+    wCtx.strokeStyle = '#d4a843';
+    wCtx.beginPath();
+    const sliceW = waveCanvas.width / buf.length;
+    let x = 0;
+    for (let i = 0; i < buf.length; i++) {
+      const y = (buf[i] / 128.0) * (waveCanvas.height / 2);
+      i === 0 ? wCtx.moveTo(x, y) : wCtx.lineTo(x, y);
+      x += sliceW;
+    }
+    wCtx.lineTo(waveCanvas.width, waveCanvas.height / 2);
+    wCtx.stroke();
+  }
+  draw();
+}
+
+// ════════════════════════════════════════════════
+// ENGINE 1: AUTOCORRELATION PITCH DETECTION
+// Most accurate method for fundamental frequency
+// ════════════════════════════════════════════════
+function getAutocorrPitch() {
+  if (!analyserTime) return null;
+  const buf = new Float32Array(analyserTime.fftSize);
+  analyserTime.getFloatTimeDomainData(buf);
+
+  // RMS check
+  let rms = 0;
+  for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+  rms = Math.sqrt(rms / buf.length);
+  if (rms < 0.007) return null;
+
+  const SIZE = buf.length, HALF = Math.floor(SIZE / 2);
+  let best = -1, bestCorr = 0, lastCorr = 1, found = false;
+
+  for (let off = 0; off < HALF; off++) {
+    let corr = 0;
+    for (let i = 0; i < HALF; i++) corr += Math.abs(buf[i] - buf[i + off]);
+    corr = 1 - (corr / HALF);
+    if (corr > 0.88 && corr > lastCorr) { found = true; if (corr > bestCorr) { bestCorr = corr; best = off; } }
+    else if (found) break;
+    lastCorr = corr;
+  }
+  if (best < 1) return null;
+  const hz = audioCtx.sampleRate / best;
+  return (hz >= 70 && hz <= 450) ? hz : null;
+}
+
+// ════════════════════════════════════════════════
+// ENGINE 2: FFT SPECTRAL TILT ANALYSIS
+// Measures harmonic richness and spectral energy distribution
+// Expressive speech has more energy in mid frequencies
+// Monotone speech has flat/falling spectral tilt
+// ════════════════════════════════════════════════
+function getSpectralTilt() {
+  if (!analyserFreq) return { tilt: 0, richness: 0 };
+  const buf  = new Uint8Array(analyserFreq.frequencyBinCount);
+  analyserFreq.getByteFrequencyData(buf);
+  const sr   = audioCtx.sampleRate;
+  const binHz = sr / analyserFreq.fftSize;
+
+  // Split into bands: low (0–300Hz), mid (300–2kHz), high (2k–6kHz)
+  let low = 0, mid = 0, high = 0, lowCount = 0, midCount = 0, highCount = 0;
+  for (let i = 0; i < buf.length; i++) {
+    const hz = i * binHz;
+    if (hz < 300)       { low  += buf[i]; lowCount++; }
+    else if (hz < 2000) { mid  += buf[i]; midCount++; }
+    else if (hz < 6000) { high += buf[i]; highCount++; }
+  }
+  const avgLow  = lowCount  ? low  / lowCount  : 0;
+  const avgMid  = midCount  ? mid  / midCount  : 0;
+  const avgHigh = highCount ? high / highCount : 0;
+  const total   = avgLow + avgMid + avgHigh;
+
+  if (total < 5) return { tilt: 0, richness: 0 };
+
+  // Spectral tilt: expressive speech has high mid energy relative to low
+  const tilt    = (avgMid + avgHigh * 0.5) / (avgLow + 1);
+  // Richness: spread of energy across bands
+  const richness = (avgMid + avgHigh) / total;
+
+  return { tilt, richness };
+}
+
+// ════════════════════════════════════════════════
+// ENGINE 3: RMS ENERGY ENVELOPE
+// Tracks volume dynamics — stress patterns appear as
+// sharp energy spikes at emphasised syllables
+// ════════════════════════════════════════════════
+function getRMSEnergy() {
+  if (!analyserTime) return 0;
+  const buf = new Float32Array(analyserTime.frequencyBinCount);
+  analyserTime.getFloatTimeDomainData(buf);
+  let sum = 0;
+  for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+  return Math.sqrt(sum / buf.length);
+}
+
+// ════════════════════════════════════════════════
+// ENGINE 4: ZERO-CROSSING RATE
+// Counts how often the waveform crosses zero per second
+// Low ZCR = voiced vowel sounds (pitch-carrying)
+// High ZCR = unvoiced consonants (fricatives, stops)
+// Expressive speech has varied ZCR — not uniform
+// ════════════════════════════════════════════════
+function getZCR() {
+  if (!analyserTime) return 0;
+  const buf = new Float32Array(analyserTime.frequencyBinCount);
+  analyserTime.getFloatTimeDomainData(buf);
+  let crossings = 0;
+  for (let i = 1; i < buf.length; i++) {
+    if ((buf[i] >= 0 && buf[i-1] < 0) || (buf[i] < 0 && buf[i-1] >= 0)) crossings++;
+  }
+  // Normalise to crossings-per-second
+  return (crossings / buf.length) * (audioCtx.sampleRate / 2);
+}
+
+// ════════════════════════════════════════════════
+// MAIN SCORING LOOP — runs every 400ms
+// ════════════════════════════════════════════════
+function startScoring(idx) {
+  const cp = CHECKPOINTS[idx];
+
+  scoringInterval = setInterval(() => {
+    elapsed += 0.4;
+    if (!audioCtx) return;
+
+    // ── Engine 1: Autocorrelation pitch ──
+    const pitch = getAutocorrPitch();
+    if (pitch) {
+      pitchHistory.push(pitch);
+      document.getElementById('pitchDisplay').textContent = Math.round(pitch) + ' Hz';
+      document.getElementById('sub-autocorr').textContent = Math.round(pitch) + ' Hz';
+    } else {
+      document.getElementById('pitchDisplay').textContent = '— Hz';
+    }
+
+    // ── Engine 2: FFT spectral ──
+    const { tilt, richness } = getSpectralTilt();
+    fftTiltHistory.push({ tilt, richness });
+    document.getElementById('sub-fft').textContent = richness > 0 ? Math.round(richness * 100) + '%' : '—';
+
+    // ── Engine 3: RMS energy ──
+    const rms = getRMSEnergy();
+    energyHistory.push(rms);
+    const vol = Math.round(Math.min(100, rms * 800));
+    document.getElementById('volumeDisplay').textContent = vol + '%';
+    document.getElementById('volumeFill').style.width    = vol + '%';
+    document.getElementById('sub-rms').textContent       = vol + '%';
+
+    // ── Engine 4: ZCR ──
+    const zcr = getZCR();
+    calibrateZCR(zcr, rms);  // adaptive baseline calibration during first 2s
+    zcrHistory.push(zcr);
+    document.getElementById('zcrDisplay').textContent = Math.round(zcr);
+    document.getElementById('sub-zcr').textContent    = Math.round(zcr);
+    document.getElementById('spokenDisplay').textContent = pitchHistory.length > 0
+      ? Math.round(pitchHistory.length * 0.4) + 's' : '—s';
+
+    // Only score once we have enough data
+    if (pitchHistory.length >= 5 || elapsed > 3) {
+      // Score each engine based on pattern
+      engines.autocorr.score = scoreAutocorr(pitchHistory, cp.pattern);
+      engines.fft.score      = scoreFFT(fftTiltHistory, cp.pattern);
+      engines.rms.score      = scoreRMS(energyHistory, cp.pattern);
+      engines.zcr.score      = scoreZCR(zcrHistory, cp.pattern);
+
+      setChipActive('autocorr', engines.autocorr.score);
+      setChipActive('fft',      engines.fft.score);
+      setChipActive('rms',      engines.rms.score);
+      setChipActive('zcr',      engines.zcr.score);
+    }
+
+    // Not speaking check
+    if (elapsed > 3.5 && pitchHistory.length < 3) {
+      document.getElementById('exerciseFeedback').textContent = 'Speak up and read the phrase aloud clearly…';
+    }
+
+    const composite = computeComposite();
+    currentAccuracy = composite;
+    setAccuracy(composite);
+    if (pitchHistory.length >= 5) updateFeedback(composite, cp.pattern);
+
+    if (composite >= PASS_THRESHOLD && elapsed >= cp.minSpeakSeconds) {
+      clearInterval(scoringInterval);
+      onPassed();
+    }
+    if (elapsed >= 50) {
+      clearInterval(scoringInterval);
+      onFailed();
+    }
+  }, 400);
+}
+
+// ── Pattern scoring: autocorrelation ──
+function scoreAutocorr(pitches, pattern) {
+  if (pitches.length < 4) return 0;
+  const mean   = pitches.reduce((a,b)=>a+b,0) / pitches.length;
+  const stdDev = Math.sqrt(pitches.reduce((s,p)=>s+Math.pow(p-mean,2),0) / pitches.length);
+  const third  = Math.max(1, Math.floor(pitches.length / 3));
+  const early  = pitches.slice(0, third).reduce((a,b)=>a+b,0) / third;
+  const late   = pitches.slice(-third).reduce((a,b)=>a+b,0) / third;
+
+  if (pattern === 'emphasis' || pattern === 'emphasis_shift') {
+    // Multiple peaks across the phrase
+    let peaks = 0;
+    for (let i = 1; i < pitches.length - 1; i++) {
+      if (pitches[i] > pitches[i-1]+14 && pitches[i] > pitches[i+1]+10) peaks++;
+    }
+    return Math.min(100, peaks * 18 + Math.min(40, (stdDev / 28) * 40));
+  } else if (pattern === 'pause_timing') {
+    // Pause detected as silence gap in pitch history
+    let silenceGaps = 0;
+    for (let i = 2; i < pitches.length - 2; i++) {
+      // Look for null-like gaps — we store 0 for silence frames
+      if (pitches[i] < 50 && pitches[i-1] > 100 && pitches[i+1] > 100) silenceGaps++;
+    }
+    return Math.min(100, silenceGaps * 30 + Math.min(40, (stdDev / 20) * 40));
+  } else if (pattern === 'consistent') {
+    // Consistent = low stdDev relative to mean, steady energy
+    const cv = mean > 0 ? stdDev / mean : 1;
+    const consistencyScore = Math.max(0, 100 - cv * 250);
+    return Math.min(100, consistencyScore);
+  } else {
+    return Math.min(100, (stdDev / 32) * 100);
+  }
+}
+
+// ── Pattern scoring: FFT spectral tilt ──
+function scoreFFT(tilts, pattern) {
+  if (tilts.length < 3) return 0;
+  const avgTilt    = tilts.reduce((s,t)=>s+t.tilt,0)    / tilts.length;
+  const avgRich    = tilts.reduce((s,t)=>s+t.richness,0) / tilts.length;
+  const tiltStdDev = Math.sqrt(tilts.reduce((s,t)=>s+Math.pow(t.tilt-avgTilt,2),0) / tilts.length);
+
+  if (pattern === 'emphasis_shift') {
+    return Math.min(100, Math.round(tiltStdDev * 20 + avgRich * 60));
+  } else if (pattern === 'pause_timing') {
+    return Math.min(100, Math.round(avgRich * 80 + Math.min(20, tiltStdDev * 10)));
+  } else if (pattern === 'consistent') {
+    // Low variation = good consistency
+    const consistency = Math.max(0, 100 - tiltStdDev * 30);
+    return Math.min(100, Math.round(consistency * 0.6 + avgRich * 40));
+  } else {
+    return Math.min(100, Math.round((avgTilt * 25 + avgRich * 60 + tiltStdDev * 15)));
+  }
+}
+
+// ── Pattern scoring: RMS energy ──
+function scoreRMS(energies, pattern) {
+  if (energies.length < 5) return 0;
+  const voiced = energies.filter(e => e > 0.008);
+  if (voiced.length < 3) return 0;
+
+  const mean   = voiced.reduce((a,b)=>a+b,0) / voiced.length;
+  const stdDev = Math.sqrt(voiced.reduce((s,e)=>s+Math.pow(e-mean,2),0) / voiced.length);
+  const dynRange = (Math.max(...voiced) - Math.min(...voiced)) / (mean + 0.001);
+  const spikes = voiced.filter(e => e > mean * 1.5).length;
+
+  if (pattern === 'emphasis_shift') {
+    return Math.min(100, Math.round(spikes * 15 + (stdDev / mean) * 60 + Math.min(25, dynRange * 20)));
+  } else if (pattern === 'pause_timing') {
+    // Energy drop (silence gap) in middle section
+    const midStart = Math.floor(energies.length * 0.25);
+    const midEnd   = Math.floor(energies.length * 0.6);
+    const midSection = energies.slice(midStart, midEnd);
+    const silentFrames = midSection.filter(e => e < 0.01).length;
+    return Math.min(100, Math.round(silentFrames * 20 + (voiced.length / energies.length) * 50));
+  } else if (pattern === 'consistent') {
+    // Low dynamic range = consistent delivery
+    const consistencyScore = Math.max(0, 100 - dynRange * 40);
+    return Math.min(100, Math.round(consistencyScore * 0.7 + (voiced.length / energies.length) * 30));
+  } else {
+    return Math.min(100, Math.round((dynRange * 40) + (stdDev / mean) * 40 + 20));
+  }
+}
+
+// ── Pattern scoring: ZCR ──
+function scoreZCR(zcrs, pattern) {
+  if (zcrs.length < 4) return 0;
+  const mean   = zcrs.reduce((a,b)=>a+b,0) / zcrs.length;
+  const stdDev = Math.sqrt(zcrs.reduce((s,z)=>s+Math.pow(z-mean,2),0) / zcrs.length);
+
+  const voicedThresh    = window._voicedZCRThreshold   || 200;
+  const consonantThresh = window._consonantZCRThreshold || 350;
+  const voicedCount    = zcrs.filter(z => z < voicedThresh).length;
+  const consonantCount = zcrs.filter(z => z > consonantThresh).length;
+  const voicedRatio    = voicedCount / zcrs.length;
+
+  if (pattern === 'emphasis_shift') {
+    return Math.min(100, Math.round(stdDev * 0.12 + voicedRatio * 50 + consonantCount * 3));
+  } else if (pattern === 'pause_timing') {
+    // Silence gaps show as very low ZCR then resumption
+    return Math.min(100, Math.round(voicedRatio * 60 + Math.min(40, stdDev * 0.10)));
+  } else if (pattern === 'consistent') {
+    // Consistent voice = steady ZCR, not erratic
+    const consistency = Math.max(0, 100 - stdDev * 0.15);
+    return Math.min(100, Math.round(consistency * 0.7 + voicedRatio * 30));
+  } else {
+    return Math.min(100, Math.round(voicedRatio * 70 + Math.min(30, stdDev * 0.08)));
+  }
+}
+
+function computeComposite() {
+  let totalW = 0, sum = 0;
+  for (const key of Object.keys(engines)) {
+    if (engines[key].score > 0 || elapsed > 2) {
+      sum    += engines[key].score * engines[key].weight;
+      totalW += engines[key].weight;
+    }
+  }
+  return totalW === 0 ? 0 : Math.round(Math.min(100, sum / totalW));
+}
+
+// ── UI helpers ──
+function setChipActive(name, score) {
+  const chip = document.getElementById('chip-' + name);
+  if (chip) chip.className = 'ai-status-chip active';
+  const el = document.getElementById('score-' + name);
+  if (el) el.textContent = Math.round(score) + '%';
+}
+function resetChips() {
+  ['autocorr','fft','rms','zcr'].forEach(n => {
+    const chip = document.getElementById('chip-' + n);
+    if (chip) chip.className = 'ai-status-chip loading';
+    const el = document.getElementById('score-' + n);
+    if (el) el.textContent = '…';
+  });
+}
+function setAccuracy(pct) {
+  pct = Math.max(0, Math.min(100, Math.round(pct)));
+  document.getElementById('accuracyValue').textContent = pct + '%';
+  document.getElementById('accuracyFill').style.width  = pct + '%';
+  document.getElementById('accuracyFill').style.background =
+    pct >= PASS_THRESHOLD ? 'linear-gradient(90deg,#60c060,#40a040)' :
+    pct >= 60             ? 'linear-gradient(90deg,var(--wood-honey),var(--gold))' :
+                            'linear-gradient(90deg,#8b4020,#c05030)';
+}
+function updateFeedback(acc, pattern) {
+  const el = document.getElementById('exerciseFeedback');
+  const hints = {
+    emphasis_shift: [
+      'Say the phrase 3 times — shift which word you stress each time.',
+      'Good — try making the stressed word more pronounced, really punch it.',
+      'Clear emphasis detected — keep cycling through all three stress points…',
+      '✦ Shifting emphasis confirmed — well done!'
+    ],
+    pause_timing: [
+      'Say "That…" then wait a full second before continuing with "is amazing."',
+      'The pause needs to be longer and cleaner — let silence do the work.',
+      'Good pause detected — hold that deliberate timing…',
+      '✦ Deliberate pause confirmed — excellent control!'
+    ],
+    consistent: [
+      'Speak at an even, unhurried pace — not flat, not rushing.',
+      'Smooth it out — avoid speeding up at the end or going monotone.',
+      'Nice steady delivery — keep that expressive, even tone…',
+      '✦ Consistent, expressive tone confirmed!'
+    ]
+  };
+  const set = hints[pattern] || hints.consistent;
+  if      (acc < 35) el.textContent = set[0];
+  else if (acc < 60) el.textContent = set[1];
+  else if (acc < PASS_THRESHOLD) el.textContent = set[2];
+  else               el.textContent = set[3];
+}
+
+// ── Encourage popup (shown when user fails, loops them back) ──
+function showEncourageAndRetry() {
+  const el = document.getElementById('exerciseFeedback');
+  el.textContent = '💪 Come on, you can do it! Try again…';
+  el.style.color = 'var(--gold)';
+  document.getElementById('tryAgainBtn').style.display = 'none';
+  setTimeout(() => {
+    el.style.color = '';
+    clearBuffers(); elapsed = 0; setAccuracy(0); resetChips();
+    startScoring(nextCheckpoint);
+  }, 2200);
+}
+
+// ── Pass / Fail / Navigation ──
+function onPassed() {
+  const msgs = [
+    'All four audio engines confirmed expressive, compelling delivery!',
+    'Autocorrelation, FFT, RMS, and ZCR all agreed — outstanding vocal control!',
+    'Every analysis engine detected strong intonation — remarkable!',
+    'Your pitch dynamics, energy, and articulation all scored above 80% — superb!'
+  ];
+  document.getElementById('congratsMsg').textContent = msgs[Math.floor(Math.random()*msgs.length)];
+  document.getElementById('congratsDetail').textContent = 'Wow, that is amazing! ✦';
+  recordTrial(currentAccuracy, true);
+  stopMic();
+  overlay.classList.add('hidden');
+  document.getElementById('congratsPopup').classList.remove('hidden');
+}
+function onFailed() {
+  recordTrial(currentAccuracy, false);
+  showEncourageAndRetry();
+}
+function retryExercise() {
+  document.getElementById('tryAgainBtn').style.display = 'none';
+  clearBuffers(); elapsed = 0; setAccuracy(0); resetChips();
+  startScoring(nextCheckpoint);
+}
+function replayInstructions() {
+  stopMic(); overlay.classList.add('hidden');
+  exerciseActive = false; clearInterval(scoringInterval);
+  clearBuffers(); elapsed = 0;
+  video.currentTime = CHECKPOINTS[nextCheckpoint].replayTime;
+  video.play();
+  showToast('Replaying instructions — exercise will pause again when reached.');
+}
+function skipExercise() {
+  stopMic(); overlay.classList.add('hidden');
+  exerciseActive = false; nextCheckpoint++; video.play();
+}
+function continueVideo() {
+  document.getElementById('congratsPopup').classList.add('hidden');
+  exerciseActive = false; nextCheckpoint++; video.play();
+}
+function recordTrial(accuracy, passed) {
+  trials.push({ accuracy, passed });
+  document.getElementById('trialCount').textContent  = trials.length;
+  document.getElementById('passCount').textContent   = trials.filter(x=>x.passed).length;
+  document.getElementById('avgAccuracy').textContent = Math.round(trials.reduce((s,x)=>s+x.accuracy,0)/trials.length)+'%';
+  const history = JSON.parse(localStorage.getItem('tp_history')||'[]');
+  history.push({ type: SESSION_TYPE, accuracy, passed, timestamp: new Date().toISOString() });
+  localStorage.setItem('tp_history', JSON.stringify(history));
+  authFetch(API_BASE + '/history',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:SESSION_TYPE,accuracy,passed})}).catch(()=>{});
+}
+
+  const SESSION_KEY = 'intonation';
+
+  // Fix 1: preventPlay stored at module scope so removeEventListener can detach it
+  let _mainVideo = null;
+  function _preventVideoPlay(e) {
+    e.preventDefault();
+    if (_mainVideo) _mainVideo.pause();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    _mainVideo = document.getElementById('mainVideo');
+    _mainVideo.controls = false;
+    _mainVideo.addEventListener('play', _preventVideoPlay);
+
+    runEnvironmentCheck('mic', () => {
+      _mainVideo.removeEventListener('play', _preventVideoPlay);
+      _mainVideo.controls = true;
+      // Check for saved progress
+      const saved = loadSessionProgress(SESSION_KEY);
+      if (saved && saved.checkpointIndex > 0) {
+        document.getElementById('resumeMsg').textContent =
+          'You reached checkpoint ' + saved.checkpointIndex + ' last time. Resume from there?';
+        document.getElementById('resumePopup').classList.remove('hidden');
+      }
+    });
+  });
+
+  // CDN offline detection — show warning if key libraries aren't loaded after 8s
+  setTimeout(() => {
+    const isCameraPage = document.getElementById('camFeed') !== null;
+    const isMicPage    = document.getElementById('waveformCanvas') !== null;
+    let missing = false;
+    if (isCameraPage) {
+      if (typeof Pose === 'undefined' && typeof faceapi === 'undefined' && typeof FaceMesh === 'undefined') missing = true;
+    }
+    // Mic page uses only Web Audio API — always available, no CDN needed
+    if (missing) {
+      const banner = document.getElementById('cdnWarningBanner');
+      if (banner) banner.style.display = 'block';
+    }
+  }, 8000);
+
+  // ── Fix 3: Session resume / auto-save ──
+  let _autoSaveInterval = null;
+
+  function startAutoSave() {
+    clearInterval(_autoSaveInterval);
+    _autoSaveInterval = setInterval(() => {
+      if (!exerciseActive && video.currentTime > 2) {
+        saveSessionProgress(SESSION_KEY, nextCheckpoint, video.currentTime);
+      }
+    }, 5000);
+  }
+
+  function resumeSession() {
+    const saved = loadSessionProgress(SESSION_KEY);
+    document.getElementById('resumePopup').classList.add('hidden');
+    if (saved) {
+      nextCheckpoint = saved.checkpointIndex;
+      video.currentTime = saved.videoTime;
+    }
+    video.play();
+    startAutoSave();
+  }
+
+  function startFresh() {
+    clearSessionProgress(SESSION_KEY);
+    document.getElementById('resumePopup').classList.add('hidden');
+    nextCheckpoint = 0;
+    video.currentTime = 0;
+    video.play();
+    startAutoSave();
+  }
+
+  // Clear progress when all checkpoints are done
+  video.addEventListener('ended', () => {
+    clearSessionProgress(SESSION_KEY);
+    clearInterval(_autoSaveInterval);
+  });
+</script>
+</body>
+</html>
