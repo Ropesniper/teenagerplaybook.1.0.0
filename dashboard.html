@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Note bubble styles ── */
+    .note-bubble {
+      background: rgba(30,15,8,0.5);
+      border: 1px solid var(--wood-mid);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+    }
+    .note-bubble.has-reply {
+      border-color: var(--gold-dim);
+      background: rgba(60,35,10,0.35);
+    }
+    .note-bubble.unread {
+      box-shadow: 0 0 0 2px rgba(180,130,40,0.3);
+    }
+    .note-meta {
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .note-msg {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .note-reply {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(180,130,40,0.2);
+    }
+    .note-reply-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem;
+      color: var(--gold-dim);
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+    .note-reply-text {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+    .unread-badge {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--ink);
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      font-weight: bold;
+      border-radius: 10px;
+      padding: 2px 8px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    /* personal video card */
+    .personal-video-card {
+      background: rgba(30,15,8,0.5);
+      border: 2px solid var(--gold-dim);
+      border-radius: 14px;
+      padding: 18px 22px;
+      margin-bottom: 14px;
+    }
+    .personal-video-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.95rem;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+    .personal-video-desc {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      line-height: 1.6;
+    }
+    /* poll option: greyed when this user voted it */
+    .poll-option-btn.voted {
+      border-color: var(--gold);
+      color: var(--gold-light);
+      background: linear-gradient(160deg, rgba(100,65,20,0.6), rgba(60,35,10,0.6));
+    }
+    .poll-option-btn.voted::after {
+      content: ' ✓';
+      font-size: 0.8rem;
+    }
+    /* announcement card */
+    .announcement-card {
+      background: linear-gradient(160deg, rgba(80,50,15,0.4), rgba(40,20,8,0.4));
+      border: 1px solid var(--gold-dim);
+      border-left: 4px solid var(--gold);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+    .announcement-icon {
+      font-size: 1.1rem;
+      margin-right: 8px;
+    }
+    .announcement-text {
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+<script src="js/auth-guard.js"></script>
+<script src="js/file-library.js"></script>
+<script>const _sess = requireAuth();</script>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="history.html">History</a>
+      <a href="about.html">About</a>
+      <a href="references.html">References</a>
+      <span id="accountTypeBadge" style="display:none;font-family:'Cinzel',serif;font-size:0.7rem;
+            letter-spacing:0.06em;color:var(--gold-dim);border:1px solid var(--wood-mid);
+            border-radius:20px;padding:3px 10px;"></span>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <a href="index.html" class="back-btn" onclick="logout(); return false;">← Sign Out &amp; Return Home</a>
+
+  <!-- Header -->
+  <div class="dash-header">
+    <p class="dash-greeting" id="greeting">Welcome back, Scholar</p>
+    <p class="title-main">The Practice Hall</p>
+    <p class="title-sub" style="font-size:1rem;">
+      "The human body is the best picture of the human soul." — Ludwig Wittgenstein
+    </p>
+    <hr class="gold-rule" style="max-width:400px;margin:0 auto;">
+  </div>
+
+  <!-- Intro -->
+  <div class="wood-panel mb-24" style="text-align:center;">
+    <p id="dashIntro" style="font-family:'IM Fell English',serif;font-style:italic;color:var(--text-muted);font-size:1rem;line-height:1.9;max-width:600px;margin:0 auto;">
+      Every great communicator once stood where you stand — at the beginning. Within these chambers, you will discover how your body speaks before your words, how your face reveals your soul, and how your voice carries the weight of meaning.
+    </p>
+  </div>
+
+  <!-- ── PERSONAL SESSIONS ── -->
+  <div id="personalSection" style="display:none;">
+    <h2 class="section-title">✦ Your Personal Sessions</h2>
+    <p class="muted text-center mb-16" style="font-size:0.85rem;">Sessions curated specifically for you by your guide.</p>
+    <div id="personalVideoList"></div>
+    <hr class="gold-rule" style="margin:32px 0;">
+  </div>
+
+
+  <!-- ── PUBLISHED FILES (visible to everyone, or specifically granted) ── -->
+  <div id="publishedSection" style="display:none;">
+    <h2 class="section-title">📂 Published Resources</h2>
+    <p class="muted text-center mb-16" style="font-size:0.85rem;">Files shared with you by your guide.</p>
+    <div id="publishedFileList"></div>
+    <hr class="gold-rule" style="margin:32px 0;">
+  </div>
+
+  <!-- ── ADMIN: VIDEO UPLOAD (only shown to admins) ── -->
+  <div id="adminUploadSection" style="display:none;">
+    <h2 class="section-title">📁 Upload Files</h2>
+    <div class="wood-panel mb-24">
+      <p style="font-family:'IM Fell English',serif;font-style:italic;color:var(--text-muted);font-size:0.88rem;text-align:center;margin-bottom:18px;line-height:1.7;">
+        Upload any file — video, PDF, audio, image, Office document. Choose the target name or enter a custom filename.
+      </p>
+
+      <div class="form-group">
+        <label for="dashVideoTarget">Target Session</label>
+        <select id="dashVideoTarget" onchange="dashHandleTargetChange()" style="width:100%;padding:10px 12px;background:rgba(20,10,4,0.6);border:1px solid var(--wood-mid);border-radius:8px;color:var(--text-main);font-family:'Cinzel',serif;font-size:0.85rem;">
+          <option value="BodyPostures">BodyPostures (session video)</option>
+          <option value="FacialExpression">FacialExpression (session video)</option>
+          <option value="Intonation">Intonation (session video)</option>
+          <option value="custom">Custom filename…</option>
+        </select>
+      </div>
+
+      <div id="dashCustomFilenameWrap" style="display:none;" class="form-group">
+        <label for="dashCustomFilename">Custom Filename (without extension)</label>
+        <input type="text" id="dashCustomFilename" placeholder="e.g. PersonalSession_John" style="width:100%;padding:10px 12px;background:rgba(20,10,4,0.6);border:1px solid var(--wood-mid);border-radius:8px;color:var(--text-main);font-family:'Libre Baskerville',serif;font-size:0.88rem;">
+      </div>
+
+      <!-- Drop zone -->
+      <div id="dashDropZone"
+           style="border:2px dashed var(--wood-mid);border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;transition:border-color 0.2s;margin-bottom:14px;"
+           onclick="document.getElementById('dashVideoFileInput').click()"
+           ondragover="event.preventDefault();this.style.borderColor='var(--gold)'"
+           ondragleave="this.style.borderColor='var(--wood-mid)'"
+           ondrop="dashOnDrop(event)">
+        <p style="font-family:'Cinzel',serif;font-size:0.8rem;color:var(--gold-dim);letter-spacing:0.08em;margin-bottom:6px;">CLICK OR DRAG & DROP</p>
+        <p style="font-family:'Libre Baskerville',serif;font-size:0.85rem;color:var(--text-dim);" id="dashDropLabel">Click or drag &amp; drop any file (video, PDF, image, audio, document…)</p>
+        <input type="file" id="dashVideoFileInput" accept="*" style="display:none;" onchange="dashOnFileSelect(event)">
+      </div>
+
+      <!-- Progress bar -->
+      <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;margin-bottom:14px;overflow:hidden;">
+        <div id="dashUploadBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--wood-honey),var(--gold));transition:width 0.3s;border-radius:3px;"></div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-primary" onclick="dashUploadVideo()">Upload File ✦</button>
+        <a href="admin.html" class="btn btn-secondary btn-sm">Open Full Admin Panel →</a>
+      </div>
+
+      <!-- Current videos list -->
+      <div style="margin-top:20px;">
+        <p class="panel-label" style="margin-bottom:10px;">Files in Library <span style="font-size:0.72rem;color:var(--text-dim);">(click 📁 button to browse &amp; open)</span></p>
+        <div id="dashVideoList"><p class="muted" style="font-style:italic;font-size:0.82rem;">Loading…</p></div>
+      </div>
+    </div>
+    <hr class="gold-rule" style="margin:8px 0 32px;">
+  </div>
+
+  <!-- ── SESSION CARDS ── -->
+  <h2 class="section-title">Choose Your Practice Session</h2>
+  <div class="mirror-grid">
+    <a href="bodypostures.html" class="mirror-card">
+      <div class="mirror-frame">
+        <div class="mirror-inner">
+          <span class="mirror-icon">🧍</span>
+          <p class="mirror-title">Body Postures</p>
+          <p class="mirror-desc">Stand tall, stand confident. Explore the silent language of the body — how posture signals authority, openness, and emotional state.</p>
+          <p class="muted text-center mt-8" style="font-size:0.78rem;font-family:'Cinzel',serif;letter-spacing:0.06em;">CAMERA REQUIRED · AI EVALUATED</p>
+        </div>
+      </div>
+    </a>
+    <a href="facialexpression.html" class="mirror-card">
+      <div class="mirror-frame">
+        <div class="mirror-inner">
+          <span class="mirror-icon">😊</span>
+          <p class="mirror-title">Facial Expressions</p>
+          <p class="mirror-desc">Your face is a canvas of emotion. Harness the power of micro-expressions and deliberate cues to build trust and connection.</p>
+          <p class="muted text-center mt-8" style="font-size:0.78rem;font-family:'Cinzel',serif;letter-spacing:0.06em;">CAMERA REQUIRED · AI EVALUATED</p>
+        </div>
+      </div>
+    </a>
+    <a href="intonation.html" class="mirror-card">
+      <div class="mirror-frame">
+        <div class="mirror-inner">
+          <span class="mirror-icon">🎙️</span>
+          <p class="mirror-title">Intonation</p>
+          <p class="mirror-desc">Your voice is your instrument. Explore how pitch, rhythm, and modulation transform your words into compelling communication.</p>
+          <p class="muted text-center mt-8" style="font-size:0.78rem;font-family:'Cinzel',serif;letter-spacing:0.06em;">MICROPHONE REQUIRED · AI EVALUATED</p>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Quick stats -->
+  <div class="wood-panel mt-32 mb-24">
+    <h2 class="section-title" style="margin-bottom:8px;">Your Progress at a Glance</h2>
+    <div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">
+      <div class="stat-item"><span class="stat-num" id="stat-postures">—</span><span class="stat-name">Body Postures</span></div>
+      <div class="stat-item"><span class="stat-num" id="stat-facial">—</span><span class="stat-name">Facial Expressions</span></div>
+      <div class="stat-item"><span class="stat-num" id="stat-intonation">—</span><span class="stat-name">Intonation</span></div>
+    </div>
+    <div class="flex-center mt-16"><a href="history.html" class="btn btn-secondary btn-sm">View Full History →</a></div>
+  </div>
+
+  <!-- ── POLLS & ANNOUNCEMENTS ── -->
+  <div class="poll-wrap">
+    <h2 class="section-title">From the Archive Desk</h2>
+    <p class="muted text-center mb-16" style="font-size:0.85rem;">Announcements and polls from your guide.</p>
+    <div id="pollContainer">
+      <p class="muted text-center" style="font-style:italic;">Loading…</p>
+    </div>
+  </div>
+
+  <!-- ── LEAVE A NOTE ── -->
+  <div class="wood-panel mt-32" id="noteSection">
+    <h2 class="section-title" style="margin-bottom:4px;">
+      <span id="notePromptText">Need a Personalised Session?</span>
+      <span class="unread-badge hidden" id="unreadBadge">0</span>
+    </h2>
+    <p class="muted text-center mb-16" style="font-size:0.88rem;font-family:'IM Fell English',serif;font-style:italic;">
+      Leave a note for your guide — describe what you'd like to work on, ask for a custom session arrangement, or share any concerns. Your guide will reply directly to your dashboard.
+    </p>
+
+    <!-- Compose -->
+    <div class="form-group">
+      <label for="noteInput">Your Message</label>
+      <textarea id="noteInput" placeholder="e.g. I struggle with maintaining eye contact during presentations. Could I get a personalised facial expression session focusing on this?" style="min-height:100px;"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="submitNote()">Send Note to Guide ✦</button>
+
+    <!-- Previous notes + replies -->
+    <div id="notesList" class="mt-24"></div>
+  </div>
+
+</div>
+
+<!-- Popup -->
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions">
+      <button class="btn btn-secondary" onclick="closePopup()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Personal file viewer popup — handles video, audio, PDF, image, download -->
+<div class="popup-overlay hidden" id="videoPopup">
+  <div class="popup-box wood-panel" style="max-width:760px;width:95vw;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;">
+      <div>
+        <p class="popup-title" id="videoPopupTitle" style="margin-bottom:4px;">Personal Session</p>
+        <p class="popup-body" id="videoPopupDesc" style="font-size:0.84rem;"></p>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="closeVideoPopup()" style="flex-shrink:0;">Close</button>
+    </div>
+    <div id="videoPopupContent" style="text-align:center;min-height:80px;"></div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const sess = getSession();
+    if (sess) {
+      const ctx = getDashboardContext(sess.accountType);
+
+      // Greeting and intro text driven by account type
+      document.getElementById('greeting').textContent = ctx.greeting + ', ' + (sess.displayName || sess.username);
+      const introEl = document.getElementById('dashIntro');
+      if (introEl) introEl.textContent = ctx.intro;
+
+      // Account type badge in nav
+      const badge = document.getElementById('accountTypeBadge');
+      if (badge) {
+        badge.textContent = getAccountTypeLabel(sess.accountType);
+        badge.style.display = 'inline-block';
+      }
+
+      // Note section prompt text
+      const notePromptEl = document.getElementById('notePromptText');
+      if (notePromptEl) notePromptEl.textContent = ctx.notePrompt;
+      const noteInputEl = document.getElementById('noteInput');
+      if (noteInputEl) noteInputEl.placeholder = ctx.notePlaceholder;
+
+      if (sess.role === 'admin') {
+        document.getElementById('adminUploadSection').style.display = 'block';
+        dashLoadVideoList();
+      }
+    }
+    loadQuickStats();
+    loadPolls();
+    loadNotes();
+    loadPersonalVideos();
+    loadPublishedFiles();
+    loadUnreadCount();
+  });
+
+  // ── Quick stats — blends localStorage (instant) with server data ──
+  function loadQuickStats() {
+    const local = JSON.parse(localStorage.getItem('tp_history') || '[]');
+    _renderStats(local); // show local immediately
+
+    // Then fetch server data and re-render with merged set
+    authFetch(API_BASE + '/history')
+      .then(r => r ? r.json() : null)
+      .then(serverData => {
+        if (!serverData) return;
+        // Merge: server is authoritative; add any local-only entries
+        const serverIds = new Set(serverData.map(e => e._id));
+        const merged = [...serverData, ...local.filter(l => !l._id || !serverIds.has(l._id))];
+        _renderStats(merged);
+      })
+      .catch(() => {}); // already showing local data — silent fail is fine
+  }
+
+  function _renderStats(history) {
+    const types = { postures:[], facial:[], intonation:[] };
+    history.forEach(e => {
+      if (e.type === 'bodypostures')     types.postures.push(e.accuracy);
+      if (e.type === 'facialexpression') types.facial.push(e.accuracy);
+      if (e.type === 'intonation')       types.intonation.push(e.accuracy);
+    });
+    const avg = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) + '%' : '—';
+    const ps = document.getElementById('stat-postures');   if (ps) ps.textContent   = avg(types.postures);
+    const fs = document.getElementById('stat-facial');     if (fs) fs.textContent     = avg(types.facial);
+    const is = document.getElementById('stat-intonation'); if (is) is.textContent = avg(types.intonation);
+  }
+
+
+  function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // ── Polls & Announcements ──
+  async function loadPolls() {
+    const container = document.getElementById('pollContainer');
+    const sess = getSession();
+    try {
+      const res = await authFetch(API_BASE + '/polls');
+      if (!res) return;
+      const polls = await res.json();
+
+      if (!polls.length) {
+        container.innerHTML = '<div class="wood-panel poll-card" style="text-align:center;"><p class="muted italic" style="font-style:italic;color:var(--text-dim);">Nothing from your guide yet — check back soon.</p></div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      polls.forEach(poll => {
+        if (poll.isAnnouncement) {
+          // Render as announcement banner
+          const div = document.createElement('div');
+          div.className = 'announcement-card';
+          div.innerHTML = `<span class="announcement-icon">📌</span><span class="announcement-text">${_esc(poll.question)}</span>`;
+          container.appendChild(div);
+          return;
+        }
+
+        // Render as poll
+        const card = document.createElement('div');
+        card.className = 'wood-panel poll-card';
+        card.innerHTML = `<p class="poll-q">${_esc(poll.question)}</p><div class="poll-options" id="poll-opts-${poll._id}"></div>`;
+
+        poll.options.forEach((opt, idx) => {
+          const btn = document.createElement('button');
+          btn.className = 'poll-option-btn' + (poll.myVote === idx ? ' voted' : '');
+          btn.innerHTML = `<span>${_esc(opt.text)}</span><span class="poll-votes">${opt.votes} vote${opt.votes !== 1 ? 's' : ''}</span>`;
+          btn.onclick = () => castVote(poll._id, idx, poll);
+          card.querySelector('.poll-options').appendChild(btn);
+        });
+
+        container.appendChild(card);
+      });
+    } catch(e) {
+      container.innerHTML = '<div class="wood-panel poll-card" style="text-align:center;"><p class="muted italic" style="font-style:italic;color:var(--text-dim);">Could not load. Make sure the server is running.</p></div>';
+    }
+  }
+
+  async function castVote(pollId, idx, poll) {
+    const sess = getSession();
+    try {
+      const res  = await authFetch(`/vote/${pollId}/${idx}`, { method:'POST', headers:{ 'Authorization':'Bearer '+sess.token } });
+      const data = await res.json();
+      if (data.msg === 'No change') {
+        showToast('You already voted for that option.');
+      } else {
+        showToast('Vote updated. ✦');
+      }
+      loadPolls();
+    } catch(e) { showToast('Could not submit vote.'); }
+  }
+
+  // ── Notes ──
+  async function loadNotes() {
+    const sess = getSession();
+    const container = document.getElementById('notesList');
+    try {
+      const res = await authFetch(API_BASE + '/notes');
+      if (!res) return;
+      const notes = await res.json();
+
+      if (!notes.length) {
+        container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;text-align:center;">You haven\'t sent any notes yet.</p>';
+        return;
+      }
+
+      container.innerHTML = '<p class="panel-label" style="margin-bottom:12px;">Your Previous Notes</p>';
+      notes.forEach(note => {
+        const hasReply  = note.adminReply && note.adminReply.trim();
+        const isUnread  = hasReply && !note.read;
+        const div = document.createElement('div');
+        div.className = `note-bubble${hasReply ? ' has-reply' : ''}${isUnread ? ' unread' : ''}`;
+        div.innerHTML = `
+          <p class="note-meta">${new Date(note.createdAt).toLocaleString()}${isUnread ? ' <span style="color:var(--gold);font-weight:bold;">· NEW REPLY</span>' : ''}</p>
+          <p class="note-msg">${_esc(note.message)}</p>
+          ${hasReply ? `
+            <div class="note-reply">
+              <p class="note-reply-label">✦ Guide's Reply${note.repliedAt ? ' · ' + new Date(note.repliedAt).toLocaleDateString() : ''}</p>
+              <p class="note-reply-text">${_esc(note.adminReply)}</p>
+              ${note.grantedFile && note.grantedFile.filename ? `
+                <div class="mt-8">
+                  <button class="btn btn-primary btn-sm" onclick="openPersonalVideo(this)"
+                    data-filename="${_esc(note.grantedFile.filename)}" data-label="${_esc(note.grantedFile.label)}" data-desc="${_esc(note.grantedFile.description)}">
+                    ▶ Watch: ${note.grantedFile.label || 'Personal Session'}
+                  </button>
+                </div>` : ''}
+              ${isUnread ? `<button class="btn btn-secondary btn-sm mt-8" onclick="markRead('${note._id}', this)">Mark as Read</button>` : ''}
+            </div>` : '<p class="muted mt-8" style="font-size:0.78rem;font-style:italic;">Awaiting reply from your guide…</p>'}
+        `;
+        container.appendChild(div);
+      });
+    } catch(e) {
+      container.innerHTML = '<p class="muted" style="font-size:0.85rem;font-style:italic;">Could not load notes.</p>';
+    }
+  }
+
+  async function submitNote() {
+    const sess    = getSession();
+    const message = document.getElementById('noteInput').value.trim();
+    if (!message) return showToast('Please write something before sending.');
+
+    try {
+      const res = await authFetch(API_BASE + '/notes', {
+        method:  'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+sess.token },
+        body:    JSON.stringify({ message })
+      });
+      if (res.ok) {
+        document.getElementById('noteInput').value = '';
+        showToast('Your note has been sent to your guide. ✦');
+        loadNotes();
+      } else {
+        showToast('Could not send note. Try again.');
+      }
+    } catch(e) { showToast('Server error. Please try again.'); }
+  }
+
+  async function markRead(noteId, btn) {
+    const sess = getSession();
+    try {
+      await authFetch(`/notes/${noteId}/read`, {
+        method:  'PATCH',
+        headers: { 'Authorization':'Bearer '+sess.token }
+      });
+      btn.closest('.note-bubble').classList.remove('unread');
+      btn.remove();
+      loadUnreadCount();
+    } catch(e) {}
+  }
+
+  async function loadUnreadCount() {
+    const sess = getSession();
+    try {
+      const res = await authFetch(API_BASE + '/notes/unread-count');
+      if (!res) return;
+      const data = await res.json();
+      const badge = document.getElementById('unreadBadge');
+      if (data.count > 0) {
+        badge.textContent = data.count;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    } catch(e) {}
+  }
+
+  // ── Personal Videos ──
+  async function loadPersonalVideos() {
+    const sess = getSession();
+    try {
+      const res = await authFetch(API_BASE + '/personal-files');
+      if (!res) return;
+      const videos = await res.json();
+      const section = document.getElementById('personalSection');
+      const list    = document.getElementById('personalVideoList');
+
+      if (!videos.length) { section.style.display = 'none'; return; }
+
+      section.style.display = 'block';
+      list.innerHTML = videos.map(v => `
+        <div class="personal-video-card">
+          <p class="personal-video-label">✦ ${v.label}</p>
+          <p class="personal-video-desc">${v.description || 'A session designed especially for you.'}</p>
+          ${v.adminReply ? `<p class="muted" style="font-size:0.82rem;font-style:italic;margin-bottom:10px;">"${v.adminReply}"</p>` : ''}
+          <button class="btn btn-primary btn-sm" onclick="openPersonalVideo(this)"
+            data-filename="${_esc(v.filename)}" data-label="${_esc(v.label)}" data-desc="${_esc(v.description)}">
+            ▶ Begin Session
+          </button>
+          ${v.grantedAt ? `<span class="muted" style="font-size:0.75rem;margin-left:14px;">Assigned ${new Date(v.grantedAt).toLocaleDateString()}</span>` : ''}
+        </div>
+      `).join('');
+    } catch(e) { console.warn("loadPublishedFiles:", e); }
+  }
+
+  // Smart file opener — detects type and renders appropriately
+  // Accepts either a button element (reads data-attrs) or raw strings
+  function openPersonalVideo(filenameOrEl, label, desc) {
+    let filename = filenameOrEl;
+    if (filenameOrEl && typeof filenameOrEl === 'object') {
+      filename = filenameOrEl.dataset.filename || '';
+      label    = filenameOrEl.dataset.label    || '';
+      desc     = filenameOrEl.dataset.desc     || '';
+    }
+    document.getElementById('videoPopupTitle').textContent = label || 'Personal Session';
+    document.getElementById('videoPopupDesc').textContent  = desc  || '';
+
+    const url     = API_BASE + '/files/' + encodeURIComponent(filename);
+    const ext     = ('.' + filename.split('.').pop()).toLowerCase();
+    const content = document.getElementById('videoPopupContent');
+    content.innerHTML = '';
+
+    const VIDEO = ['.mp4','.webm','.mov','.avi','.mkv','.m4v'];
+    const AUDIO = ['.mp3','.wav','.ogg','.m4a','.aac','.flac'];
+    const IMAGE = ['.jpg','.jpeg','.png','.gif','.webp','.svg','.bmp'];
+
+    if (VIDEO.includes(ext)) {
+      content.innerHTML = `<video controls playsinline autoplay style="width:100%;max-height:380px;border-radius:8px;background:#000;">
+        <source src="${url}"></video>`;
+    } else if (AUDIO.includes(ext)) {
+      content.innerHTML = `<div style="padding:20px;"><div style="font-size:3rem;margin-bottom:16px;">🎵</div>
+        <audio controls autoplay style="width:100%;max-width:480px;"><source src="${url}"></audio></div>`;
+    } else if (ext === '.pdf') {
+      content.style.height = '60vh';
+      content.innerHTML = `<iframe src="${url}" style="width:100%;height:100%;border:none;border-radius:6px;"></iframe>`;
+    } else if (IMAGE.includes(ext)) {
+      content.innerHTML = `<img src="${url}" style="max-width:100%;max-height:70vh;border-radius:8px;">`;
+    } else {
+      content.innerHTML = `<div style="padding:24px;">
+        <div style="font-size:3rem;margin-bottom:16px;">📎</div>
+        <p style="margin-bottom:20px;color:var(--text-muted);font-size:0.88rem;">This file type opens as a download.</p>
+        <a href="${url}" download="${filename}"
+           style="display:inline-block;padding:10px 24px;background:linear-gradient(135deg,var(--wood-honey),var(--gold));
+                  color:var(--ink);border-radius:8px;font-family:'Cinzel',serif;font-size:0.82rem;text-decoration:none;">
+          ⬇ Download ${filename}
+        </a></div>`;
+    }
+
+    document.getElementById('videoPopup').classList.remove('hidden');
+  }
+
+  function closeVideoPopup() {
+    document.getElementById('videoPopupContent').innerHTML = '';
+    document.getElementById('videoPopup').classList.add('hidden');
+  }
+
+  // ── Admin: Dashboard Video Upload ──
+  let _dashSelectedFile = null;
+
+  function dashHandleTargetChange() {
+    const val = document.getElementById('dashVideoTarget').value;
+    document.getElementById('dashCustomFilenameWrap').style.display =
+      val === 'custom' ? 'block' : 'none';
+  }
+
+  function dashOnFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) { _dashSelectedFile = file; document.getElementById('dashDropLabel').textContent = '✦ ' + file.name; }
+  }
+
+  function dashOnDrop(e) {
+    e.preventDefault();
+    document.getElementById('dashDropZone').style.borderColor = 'var(--wood-mid)';
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      _dashSelectedFile = file;
+      document.getElementById('dashDropLabel').textContent = '✦ ' + file.name;
+    } else {
+      showToast('No file detected.');
+    }
+  }
+
+  function dashGetFilename() {
+    const val = document.getElementById('dashVideoTarget').value;
+    if (val === 'custom') {
+      const custom = (document.getElementById('dashCustomFilename').value || '').trim();
+      return custom || 'PersonalVideo';
+    }
+    return val;
+  }
+
+  async function dashUploadVideo() {
+    if (!_dashSelectedFile) return showToast('Please select a video file first.');
+    const sess = getSession();
+    if (!sess || sess.role !== 'admin') return showToast('Admin access required.');
+
+    const form = new FormData();
+    form.append('video', _dashSelectedFile);
+    form.append('target', dashGetFilename());
+
+    const bar = document.getElementById('dashUploadBar');
+    bar.style.width = '10%';
+
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', API_BASE + '/admin/upload-file');
+      xhr.setRequestHeader('Authorization', 'Bearer ' + sess.token);
+
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) bar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+      };
+
+      xhr.onload = () => {
+        bar.style.width = '100%';
+        setTimeout(() => { bar.style.width = '0%'; }, 1200);
+        if (xhr.status === 200) {
+          let data = {}; try { data = JSON.parse(xhr.responseText); } catch(_) {}
+          showToast('"' + data.filename + '" uploaded successfully! ✦');
+          _dashSelectedFile = null;
+          document.getElementById('dashDropLabel').textContent = 'Click or drag &amp; drop any file (video, PDF, image, audio, document…)';
+          document.getElementById('dashVideoFileInput').value = '';
+          dashLoadVideoList();
+        } else {
+          try { showToast(JSON.parse(xhr.responseText).msg || 'Upload failed.'); }
+          catch(e) { showToast('Upload failed.'); }
+        }
+      };
+
+      xhr.onerror = () => { bar.style.width = '0%'; showToast('Network error. Is the server running?'); };
+      xhr.send(form);
+    } catch(e) { bar.style.width = '0%'; showToast('Could not upload.'); }
+  }
+
+  async function dashLoadVideoList() {
+    const sess = getSession();
+    if (!sess || sess.role !== 'admin') return;
+    const el = document.getElementById('dashVideoList');
+    try {
+      const res = await authFetch(API_BASE + '/admin/files');
+      if (!res) return;
+      const files = await res.json();
+      if (!files.length) {
+        el.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.82rem;">No files uploaded yet.</p>';
+        return;
+      }
+      const icons = {video:'🎬',audio:'🎵',pdf:'📄',image:'🖼️',document:'📝',other:'📎'};
+      const cats  = {'.mp4':'video','.webm':'video','.mov':'video','.mp3':'audio','.wav':'audio','.ogg':'audio','.m4a':'audio','.pdf':'pdf','.jpg':'image','.jpeg':'image','.png':'image','.gif':'image','.webp':'image','.doc':'document','.docx':'document','.ppt':'document','.pptx':'document','.xls':'document','.xlsx':'document'};
+      const fcat = fn => cats[('.'+fn.split('.').pop()).toLowerCase()] || 'other';
+      el.innerHTML = files.map(f => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;
+                    background:rgba(20,10,4,0.4);border-radius:8px;margin-bottom:6px;">
+          <span style="font-family:'Cinzel',serif;font-size:0.78rem;color:var(--text-muted);">
+            ${icons[fcat(f.name)]||'📎'} ${f.name}
+            <span style="color:var(--text-dim);font-size:0.72rem;margin-left:8px;">${f.size}</span>
+          </span>
+          <button onclick="dashDeleteVideo('${f.name}')"
+                  style="background:none;border:1px solid rgba(180,60,40,0.4);border-radius:6px;
+                         color:rgba(220,100,80,0.8);font-size:0.72rem;padding:3px 8px;cursor:pointer;">
+            Delete
+          </button>
+        </div>`).join('');
+    } catch(e) {
+      el.innerHTML = '<p class="muted" style="font-size:0.82rem;">Could not load video list.</p>';
+    }
+  }
+
+  async function dashDeleteVideo(name) {
+    if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
+    const sess = getSession();
+    try {
+      const res = await authFetch(API_BASE + '/admin/files/' + encodeURIComponent(name), {
+        method: 'DELETE'
+      });
+      if (res.ok) { showToast('"' + name + '" deleted. ✦'); dashLoadVideoList(); }
+      else showToast('Could not delete.');
+    } catch(e) { showToast('Server error.'); }
+  }
+
+
+  // ── Published Files (from admin publish panel) ──
+  async function loadPublishedFiles() {
+    try {
+      const res = await authFetch(API_BASE + '/published-files');
+      if (!res) return;
+      const files = await res.json();
+      const section = document.getElementById('publishedSection');
+      const list    = document.getElementById('publishedFileList');
+      if (!files.length) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      const icons = {mp4:'🎬',webm:'🎬',mov:'🎬',mp3:'🎵',wav:'🎵',ogg:'🎵',m4a:'🎵',pdf:'📄',jpg:'🖼️',jpeg:'🖼️',png:'🖼️',gif:'🖼️',webp:'🖼️',doc:'📝',docx:'📝',ppt:'📝',pptx:'📝',xls:'📝',xlsx:'📝',zip:'🗜️'};
+      const icon = fn => icons[(fn.split('.').pop()||'').toLowerCase()] || '📎';
+      list.innerHTML = files.map(f => `
+        <div class="personal-video-card">
+          <p class="personal-video-label">${icon(f.filename)} ${_esc(f.label)}</p>
+          <p class="personal-video-desc">${_esc(f.description || '')}</p>
+          <button class="btn btn-primary btn-sm" onclick="openPersonalVideo(this)"
+            data-filename="${_esc(f.filename)}" data-label="${_esc(f.label)}" data-desc="${_esc(f.description||'')}">
+            ▶ Open
+          </button>
+          <span class="muted" style="font-size:0.75rem;margin-left:14px;">
+            Published ${new Date(f.publishedAt).toLocaleDateString()}
+          </span>
+        </div>`).join('');
+    } catch(e) {}
+  }
+
+
+</script>
+</body>
+</html>

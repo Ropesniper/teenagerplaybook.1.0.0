@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Body Postures — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- AI Model Stack -->
+  <!-- 1. TensorFlow.js core — required by PoseNet -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+  <!-- 2. TensorFlow PoseNet — second independent skeleton model -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js"></script>
+  <!-- 3. MediaPipe utilities -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <!-- 4. MediaPipe Pose — primary skeleton model -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <!-- 5. Environment checker -->
+  <script src="js/env-check.js"></script>
+
+  <style>
+    .ai-status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: 100%;
+      max-width: 340px;
+    }
+    .ai-status-chip {
+      background: rgba(20,10,4,0.6);
+      border: 1px solid var(--wood-mid);
+      border-radius: 8px;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    .ai-status-chip .chip-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      display: block;
+      margin-bottom: 3px;
+    }
+    .ai-status-chip .chip-score {
+      font-family: 'Cinzel', serif;
+      font-size: 0.88rem;
+      color: var(--gold);
+    }
+    .ai-status-chip.active  { border-color: var(--gold-dim); }
+    .ai-status-chip.loading { border-color: #8b6020; }
+    .ai-status-chip.failed  { border-color: #6b2020; opacity: 0.5; }
+    .composite-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      color: var(--gold-dim);
+      letter-spacing: 0.1em;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<script src="js/auth-guard.js"></script>
+<script src="js/file-library.js"></script>
+<script>const _sess = requireAuth();</script>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="history.html">History</a>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+  <p class="title-main">Body Postures</p>
+  <p class="title-sub">Stand tall — your body speaks before your words</p>
+  <hr class="gold-rule">
+
+  <div class="wood-panel mb-24">
+    <h3 class="panel-label">📋 How This Session Works</h3>
+    <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.8;">
+      Watch the instructional video. It pauses at exercise checkpoints and your camera activates. <strong style="color:var(--gold);">Three AI models</strong> evaluate your posture simultaneously — MediaPipe Pose, TensorFlow PoseNet, and a lighting quality checker. Their scores are combined into one composite result. Reach <strong style="color:var(--gold);">80%</strong> to pass.
+    </p>
+    <div class="check-row mt-16" style="display:none;">
+      <input type="checkbox" id="camPermCheck">
+      <label for="camPermCheck" style="color:var(--text-muted);font-size:0.88rem;">
+        I allow camera access — processed entirely in the browser, never stored or transmitted.
+      </label>
+    </div>
+  </div>
+
+
+  <!-- CDN offline warning — shown automatically if AI libraries fail to load -->
+  <div id="cdnWarningBanner" style="display:none;background:rgba(80,20,10,0.5);border:1px solid rgba(180,60,40,0.5);border-radius:10px;padding:12px 18px;margin-bottom:16px;text-align:center;">
+    <p style="font-family:'Cinzel',serif;font-size:0.78rem;color:#e08060;letter-spacing:0.06em;margin-bottom:4px;">⚠ AI LIBRARIES UNAVAILABLE</p>
+    <p style="font-family:'Libre Baskerville',serif;font-size:0.82rem;color:var(--text-muted);line-height:1.5;">Could not reach cdn.jsdelivr.net. AI models are offline — exercises will run in fallback scoring mode. Check your internet connection and reload for full accuracy.</p>
+  </div>
+
+  <!-- ── Pre-session Agreement Popup (filled by env-check.js) ── -->
+  <div class="popup-overlay" id="envCheckPopup"></div>
+
+  <div class="video-wrap" id="videoWrap">
+    <video id="mainVideo" preload="metadata" playsinline>
+      <source src="files/BodyPostures.mp4" type="video/mp4">
+    </video>
+    <div class="video-no-src" id="videoPlaceholder" style="display:none;">
+      <p>Video not yet uploaded. Admin Panel → Upload Video → Body Postures.</p>
+    </div>
+
+    <div class="exercise-overlay hidden" id="exerciseOverlay">
+      <p class="exercise-msg" id="exerciseTitle">⏸ Exercise Checkpoint</p>
+      <p class="exercise-sub" id="exerciseInstruction">Follow the instructions from the video.</p>
+
+      <!-- Camera + skeleton canvas -->
+      <div style="position:relative;display:inline-block;">
+        <video id="camFeed" autoplay playsinline muted></video>
+        <canvas id="aiCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:10px;"></canvas>
+      </div>
+
+      <!-- AI Status chips — one per model -->
+      <div class="ai-status-grid">
+        <div class="ai-status-chip loading" id="chip-mediapipe">
+          <span class="chip-name">MediaPipe</span>
+          <span class="chip-score" id="score-mediapipe">…</span>
+        </div>
+        <div class="ai-status-chip loading" id="chip-posenet">
+          <span class="chip-name">PoseNet</span>
+          <span class="chip-score" id="score-posenet">…</span>
+        </div>
+        <div class="ai-status-chip loading" id="chip-lighting">
+          <span class="chip-name">Lighting</span>
+          <span class="chip-score" id="score-lighting">…</span>
+        </div>
+      </div>
+
+      <!-- Composite bar -->
+      <div class="accuracy-bar-wrap">
+        <p class="composite-label">COMPOSITE SCORE</p>
+        <p class="accuracy-label">Posture Score: <span id="accuracyValue">0%</span></p>
+        <div class="accuracy-bar"><div class="accuracy-fill" id="accuracyFill"></div></div>
+        <p style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--text-dim);text-align:center;margin-top:4px;letter-spacing:0.06em;">PASS THRESHOLD: 80%</p>
+      </div>
+
+      <!-- What's being evaluated -->
+      <div style="background:rgba(20,10,4,0.6);border:1px solid var(--gold-dim);border-radius:10px;padding:8px 14px;max-width:300px;">
+        <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold-dim);letter-spacing:0.08em;margin-bottom:3px;">EVALUATING</p>
+        <p style="font-family:'Libre Baskerville',serif;font-size:0.8rem;color:var(--text-muted);line-height:1.4;" id="aiEvalDesc">—</p>
+      </div>
+
+      <p class="exercise-sub" id="exerciseFeedback" style="color:var(--gold);">Position your full body in frame…</p>
+
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="replayInstructions()">↩ Replay Instructions</button>
+        <button class="btn btn-primary" id="tryAgainBtn" onclick="retryExercise()" style="display:none;">Try Again</button>
+        <button class="btn btn-secondary" onclick="skipExercise()">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wood-panel mt-24">
+    <h3 class="panel-label">Session Progress</h3>
+    <div class="stat-row">
+      <div class="stat-item"><span class="stat-num" id="trialCount">0</span><span class="stat-name">Trials</span></div>
+      <div class="stat-item"><span class="stat-num" id="passCount">0</span><span class="stat-name">Passed</span></div>
+      <div class="stat-item"><span class="stat-num" id="avgAccuracy">—</span><span class="stat-name">Avg Score</span></div>
+    </div>
+  </div>
+</div>
+
+  <!-- ── Session Resume Popup ── -->
+  <div class="popup-overlay hidden" id="resumePopup">
+    <div class="popup-box wood-panel">
+      <p class="popup-title">Resume Session?</p>
+      <p class="popup-body" id="resumeMsg">You left this session partway through. Would you like to continue from where you stopped?</p>
+      <div class="popup-actions">
+        <button class="btn btn-primary"   onclick="resumeSession()">Resume ✦</button>
+        <button class="btn btn-secondary" onclick="startFresh()">Start from Beginning</button>
+      </div>
+    </div>
+  </div>
+<div class="popup-overlay hidden" id="congratsPopup">
+  <div class="popup-box wood-panel congrats-pop">
+    <p class="confetti-line">🎉 ✦ 🎉</p>
+    <p class="popup-title">Excellent Posture!</p>
+    <p class="popup-body success" id="congratsMsg">All three AI models confirmed outstanding alignment!</p>
+    <p class="popup-body" style="font-size:0.82rem;color:var(--text-muted);">The video will continue when you're ready.</p>
+    <div class="popup-actions">
+      <button class="btn btn-primary" onclick="continueVideo()">Continue Video →</button>
+    </div>
+  </div>
+</div>
+
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions"><button class="btn btn-secondary" onclick="closePopup()">Close</button></div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CHECKPOINT CONFIGURATION — fill in once your video is ready
+//
+//  time:        seconds in video to pause for exercise
+//  replayTime:  seconds to jump back to when user hits ↩ Replay
+//  evaluator:   'upright' | 'widestance' | 'chinlevel' | 'custom'
+// ═══════════════════════════════════════════════════════════════
+const CHECKPOINTS = [
+  {
+    time:       10,
+    replayTime: 0,
+    name:       'Exercise 1 — Open Stance',
+    instruction:'Stand with feet shoulder-width apart, arms relaxed at sides, facing the camera.',
+    aiEval:     'Level shoulders · upright spine · head above shoulders · full body visible',
+    evaluator:  'upright'
+  },
+  {
+    time:       30,
+    replayTime: 20,
+    name:       'Exercise 2 — Power Pose',
+    instruction:'Feet wide apart, hands on hips, chest open. Hold for 5 seconds.',
+    aiEval:     'Wide foot stance · elbows out (hands on hips) · open torso · stable hold',
+    evaluator:  'widestance'
+  },
+  {
+    time:       55,
+    replayTime: 45,
+    name:       'Exercise 3 — Confident Alignment',
+    instruction:'Chin parallel to floor, shoulders rolled back and down, chest open and forward.',
+    aiEval:     'Chin level · ears at equal height · shoulders back · spine erect',
+    evaluator:  'chinlevel'
+  }
+];
+
+const PASS_THRESHOLD = 80;
+const SESSION_TYPE   = 'bodypostures';
+
+// ── Model state ──
+const models = {
+  mediapipe: { loaded: false, score: 0, weight: 0.5  },  // 50% weight — most detailed
+  posenet:   { loaded: false, score: 0, weight: 0.35 },  // 35% weight — second skeleton
+  lighting:  { loaded: true,  score: 0, weight: 0.15 }   // 15% weight — always available
+};
+
+let trials = [], camStream = null, poseInstance = null, poseNetModel = null;
+let currentAccuracy = 0, scoringInterval = null;
+let nextCheckpoint = 0, exerciseActive = false;
+let mpLandmarks = null;   // latest MediaPipe results
+let pnPose      = null;   // latest PoseNet results
+
+const video    = document.getElementById('mainVideo');
+const overlay  = document.getElementById('exerciseOverlay');
+const camFeed  = document.getElementById('camFeed');
+const aiCanvas = document.getElementById('aiCanvas');
+const aiCtx    = aiCanvas.getContext('2d');
+
+// ── Pre-load PoseNet in background ──
+(async () => {
+  try {
+    poseNetModel = await posenet.load({
+      architecture:      'MobileNetV1',
+      outputStride:      16,
+      inputResolution:   { width: 320, height: 240 },
+      multiplier:        0.75
+    });
+    models.posenet.loaded = true;
+    console.log('✦ PoseNet loaded');
+  } catch(e) {
+    console.warn('PoseNet failed to load:', e.message);
+    setChipFailed('posenet');
+  }
+})();
+
+// ── Video events ──
+video.addEventListener('error', () => {
+  document.getElementById('videoPlaceholder').style.display = 'flex';
+  video.style.display = 'none';
+});
+video.addEventListener('timeupdate', () => {
+  if (exerciseActive || nextCheckpoint >= CHECKPOINTS.length) return;
+  // Only trigger the CURRENT checkpoint — never look back at passed ones
+  // This prevents replayInstructions() from re-triggering earlier checkpoints
+  const cp = CHECKPOINTS[nextCheckpoint];
+  if (video.currentTime >= cp.time && video.currentTime <= cp.time + 1.5) {
+    video.pause();
+    startExercise(nextCheckpoint);
+  }
+});
+
+// ── Start exercise ──
+async function startExercise(idx) {
+  exerciseActive = true;
+  const cp = CHECKPOINTS[idx];
+  document.getElementById('exerciseTitle').textContent       = '⏸ ' + cp.name;
+  document.getElementById('exerciseInstruction').textContent = cp.instruction;
+  document.getElementById('aiEvalDesc').textContent          = cp.aiEval;
+  document.getElementById('exerciseFeedback').textContent    = 'Position your full body in frame…';
+  document.getElementById('tryAgainBtn').style.display       = 'none';
+  resetChips();
+  setAccuracy(0);
+  mpLandmarks = null;
+  pnPose      = null;
+  overlay.classList.remove('hidden');
+
+  if (!document.getElementById('camPermCheck').checked) {
+    document.getElementById('exerciseFeedback').textContent = 'Please tick camera consent above first.';
+    return;
+  }
+  await startCamera();
+  initMediaPipe();
+  startScoring(idx);
+}
+
+async function startCamera() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    camFeed.srcObject = camStream;
+    await camFeed.play();
+    aiCanvas.width  = camFeed.videoWidth  || 640;
+    aiCanvas.height = camFeed.videoHeight || 480;
+  } catch(e) {
+    showPopup('Camera Denied', 'Please allow camera access in your browser and try again.', 'error');
+  }
+}
+
+function stopCamera() {
+  if (camStream)   { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (poseInstance){ poseInstance.close(); poseInstance = null; }
+  clearInterval(scoringInterval);
+  clearInterval(_autoSaveInterval); // Fix 3: stop auto-save when camera stops
+}
+
+// ── MediaPipe Pose init ──
+function initMediaPipe() {
+  try {
+    poseInstance = new Pose({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
+    });
+    poseInstance.setOptions({
+      modelComplexity:        1,
+      smoothLandmarks:        true,
+      enableSegmentation:     false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence:  0.5
+    });
+    poseInstance.onResults(results => {
+      mpLandmarks = results.poseLandmarks || null;
+      models.mediapipe.loaded = true;
+
+      // Draw skeleton
+      aiCtx.save();
+      aiCtx.clearRect(0, 0, aiCanvas.width, aiCanvas.height);
+      if (mpLandmarks) {
+        drawConnectors(aiCtx, mpLandmarks, POSE_CONNECTIONS, { color: 'rgba(212,168,67,0.65)', lineWidth: 2 });
+        drawLandmarks(aiCtx,  mpLandmarks, { color: 'rgba(212,168,67,0.9)', fillColor: 'rgba(180,130,40,0.5)', lineWidth: 1, radius: 3 });
+      }
+      aiCtx.restore();
+    });
+
+    const mpCam = new Camera(camFeed, {
+      onFrame: async () => { if (poseInstance) await poseInstance.send({ image: camFeed }); },
+      width: 640, height: 480
+    });
+    mpCam.start();
+  } catch(e) {
+    console.warn('MediaPipe failed:', e.message);
+    setChipFailed('mediapipe');
+  }
+}
+
+// ── Composite scoring loop — runs every 600ms ──
+function startScoring(idx) {
+  let elapsed = 0;
+  const cp = CHECKPOINTS[idx];
+
+  scoringInterval = setInterval(async () => {
+    elapsed += 0.6;
+
+    // 1. MediaPipe score
+    if (models.mediapipe.loaded && mpLandmarks) {
+      models.mediapipe.score = scoreMediaPipe(mpLandmarks, cp.evaluator);
+      setChipActive('mediapipe', models.mediapipe.score);
+    } else if (!models.mediapipe.loaded) {
+      setChipFailed('mediapipe');
+    }
+
+    // 2. PoseNet score (run async, non-blocking)
+    if (models.posenet.loaded && poseNetModel && camFeed.readyState === 4) {
+      try {
+        pnPose = await poseNetModel.estimateSinglePose(camFeed, { flipHorizontal: true });
+        models.posenet.score = scorePoseNet(pnPose, cp.evaluator);
+        setChipActive('posenet', models.posenet.score);
+      } catch(e) { /* skip frame */ }
+    } else if (!models.posenet.loaded) {
+      setChipFailed('posenet');
+    }
+
+    // 3. Lighting quality check (always runs — canvas pixel analysis)
+    models.lighting.score = scoreLighting();
+    setChipActive('lighting', models.lighting.score);
+
+    // Composite: weighted average of available models
+    const composite = computeComposite();
+    currentAccuracy = composite;
+    setAccuracy(composite);
+    updateFeedback(composite, cp.evaluator);
+
+    if (composite >= PASS_THRESHOLD && elapsed >= 2.5) {
+      clearInterval(scoringInterval);
+      onPassed();
+    }
+    if (elapsed >= 45) {
+      clearInterval(scoringInterval);
+      onFailed();
+    }
+  }, 600);
+}
+
+// ── Weighted composite ──
+function computeComposite() {
+  let totalWeight = 0, weightedSum = 0;
+  for (const key of Object.keys(models)) {
+    const m = models[key];
+    // Only include models that have produced a non-zero score recently
+    if (m.score > 0 || m.loaded) {
+      weightedSum  += m.score * m.weight;
+      totalWeight  += m.weight;
+    }
+  }
+  if (totalWeight === 0) return 0;
+  return Math.round(Math.min(100, weightedSum / totalWeight));
+}
+
+// ──────────────────────────────────────────────
+// MEDIAPIPE POSE SCORING
+// ──────────────────────────────────────────────
+function scoreMediaPipe(lm, evaluator) {
+  const vis  = idx => lm[idx] && lm[idx].visibility > 0.5;
+  const dist = (a, b) => Math.sqrt(Math.pow(lm[a].x - lm[b].x, 2) + Math.pow(lm[a].y - lm[b].y, 2));
+
+  if (evaluator === 'upright') {
+    if (!vis(11)||!vis(12)||!vis(23)||!vis(24)) return 10;
+    const shoulderDiff   = Math.abs(lm[11].y - lm[12].y);
+    const torsoHeight    = Math.abs(((lm[11].y+lm[12].y)/2) - ((lm[23].y+lm[24].y)/2));
+    const headAbove      = lm[0].y < (lm[11].y + lm[12].y) / 2;
+    const shoulderWidth  = dist(11, 12);
+    let s = 0;
+    s += shoulderDiff < 0.035 ? 32 : shoulderDiff < 0.07 ? 18 : 5;
+    s += torsoHeight   > 0.22 ? 25 : torsoHeight  > 0.12 ? 14 : 4;
+    s += headAbove ? 22 : 6;
+    s += shoulderWidth > 0.18 ? 13 : 8;
+    s += vis(23) && vis(24) ? 8 : 0;
+    return Math.min(100, s);
+
+  } else if (evaluator === 'widestance') {
+    if (!vis(25)||!vis(26)||!vis(11)||!vis(12)) return 10;
+    const kneeW  = dist(25, 26);
+    const shldrW = dist(11, 12);
+    const elbowW = vis(13)&&vis(14) ? dist(13, 14) : 0;
+    let s = 0;
+    s += (kneeW  / (shldrW+0.001)) > 1.25 ? 42 : (kneeW/(shldrW+0.001)) > 0.95 ? 24 : 8;
+    s += (elbowW / (shldrW+0.001)) > 1.25 ? 36 : (elbowW/(shldrW+0.001)) > 0.95 ? 20 : 7;
+    s += vis(11)&&vis(12) ? 12 : 0;
+    s += vis(23)&&vis(24) ? 10 : 0;
+    return Math.min(100, s);
+
+  } else if (evaluator === 'chinlevel') {
+    if (!vis(0)||!vis(11)||!vis(12)) return 10;
+    const noseShoulderGap = ((lm[11].y+lm[12].y)/2) - lm[0].y;
+    const earDiff         = vis(7)&&vis(8) ? Math.abs(lm[7].y - lm[8].y) : 0.05;
+    const shldrLevel      = Math.abs(lm[11].y - lm[12].y);
+    let s = 0;
+    s += noseShoulderGap > 0.14 ? 36 : noseShoulderGap > 0.07 ? 20 : 5;
+    s += earDiff         < 0.025 ? 32 : earDiff         < 0.055 ? 18 : 5;
+    s += shldrLevel      < 0.04  ? 24 : shldrLevel      < 0.08  ? 14 : 4;
+    s += vis(23) ? 8 : 0;
+    return Math.min(100, s);
+
+  } else {
+    const visible = lm.filter(l => l.visibility > 0.55).length;
+    return Math.min(100, Math.round((visible / 22) * 100));
+  }
+}
+
+// ──────────────────────────────────────────────
+// POSENET SCORING — uses keypoint scores + geometry
+// ──────────────────────────────────────────────
+function scorePoseNet(pose, evaluator) {
+  if (!pose || !pose.keypoints) return 0;
+  const kp     = {};
+  pose.keypoints.forEach(k => { kp[k.part] = k; });
+  const has    = part => kp[part] && kp[part].score > 0.45;
+  const dist2D = (a, b) => Math.sqrt(Math.pow(a.position.x-b.position.x,2)+Math.pow(a.position.y-b.position.y,2));
+
+  // Overall detection confidence
+  const avgConf = pose.keypoints.reduce((s, k) => s + k.score, 0) / pose.keypoints.length;
+  if (avgConf < 0.3) return 0;
+
+  if (evaluator === 'upright') {
+    if (!has('leftShoulder')||!has('rightShoulder')) return 10;
+    const shldrDiff  = Math.abs(kp.leftShoulder.position.y - kp.rightShoulder.position.y);
+    const hipVisible = has('leftHip') && has('rightHip');
+    const headUp     = has('nose') && kp.nose.position.y < kp.leftShoulder.position.y;
+    let s = 0;
+    s += shldrDiff < 15 ? 40 : shldrDiff < 30 ? 22 : 8;
+    s += headUp ? 30 : 10;
+    s += hipVisible ? 20 : 8;
+    s += avgConf > 0.65 ? 10 : 5;
+    return Math.min(100, s);
+
+  } else if (evaluator === 'widestance') {
+    if (!has('leftKnee')||!has('rightKnee')||!has('leftShoulder')||!has('rightShoulder')) return 10;
+    const kneeW  = dist2D(kp.leftKnee,     kp.rightKnee);
+    const shldrW = dist2D(kp.leftShoulder, kp.rightShoulder);
+    const ratio  = kneeW / (shldrW + 1);
+    let s = 0;
+    s += ratio > 1.3 ? 45 : ratio > 1.0 ? 28 : 10;
+    s += has('leftElbow')&&has('rightElbow') ? 30 : 10;
+    s += avgConf > 0.65 ? 15 : 7;
+    s += has('leftHip')&&has('rightHip') ? 10 : 0;
+    return Math.min(100, s);
+
+  } else if (evaluator === 'chinlevel') {
+    if (!has('nose')||!has('leftShoulder')) return 10;
+    const noseShldrGap = kp.leftShoulder.position.y - kp.nose.position.y;
+    const earDiff      = has('leftEar')&&has('rightEar') ? Math.abs(kp.leftEar.position.y - kp.rightEar.position.y) : 20;
+    let s = 0;
+    s += noseShldrGap > 60  ? 40 : noseShldrGap > 30  ? 22 : 8;
+    s += earDiff      < 10  ? 35 : earDiff      < 22  ? 20 : 6;
+    s += avgConf > 0.65 ? 15 : 7;
+    s += has('leftHip') ? 10 : 0;
+    return Math.min(100, s);
+
+  } else {
+    return Math.min(100, Math.round(avgConf * 100));
+  }
+}
+
+// ──────────────────────────────────────────────
+// LIGHTING QUALITY CHECK — canvas pixel analysis
+// Measures brightness, contrast, and face-area visibility
+// ──────────────────────────────────────────────
+function scoreLighting() {
+  try {
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = 80;
+    offscreen.height = 60;
+    const ctx = offscreen.getContext('2d');
+    ctx.drawImage(camFeed, 0, 0, 80, 60);
+    const pixels = ctx.getImageData(0, 0, 80, 60).data;
+
+    let totalBrightness = 0, min = 255, max = 0;
+    const pixelCount = pixels.length / 4;
+
+    for (let i = 0; i < pixels.length; i += 4) {
+      // Perceived luminance
+      const lum = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2];
+      totalBrightness += lum;
+      if (lum < min) min = lum;
+      if (lum > max) max = lum;
+    }
+
+    const avgBrightness = totalBrightness / pixelCount;
+    const contrast      = max - min;
+
+    let score = 0;
+    // Brightness: ideal 90–180 (not too dark, not washed out)
+    if      (avgBrightness >= 90  && avgBrightness <= 180) score += 55;
+    else if (avgBrightness >= 60  && avgBrightness <= 210) score += 35;
+    else if (avgBrightness >= 40  && avgBrightness <= 230) score += 18;
+    else score += 5;
+
+    // Contrast: should be > 60 to distinguish body from background
+    if      (contrast >= 100) score += 30;
+    else if (contrast >= 60)  score += 20;
+    else if (contrast >= 30)  score += 10;
+    else score += 3;
+
+    // Bonus: not too noisy (very high max = overexposed)
+    if (max < 250 && min > 10) score += 15;
+
+    return Math.min(100, score);
+  } catch(e) { return 60; }  // default to passing if analysis fails
+}
+
+// ──────────────────────────────────────────────
+// UI helpers
+// ──────────────────────────────────────────────
+function setChipActive(name, score) {
+  const chip = document.getElementById('chip-' + name);
+  if (chip) { chip.className = 'ai-status-chip active'; }
+  const el = document.getElementById('score-' + name);
+  if (el) el.textContent = Math.round(score) + '%';
+}
+function setChipFailed(name) {
+  const chip = document.getElementById('chip-' + name);
+  if (chip) chip.className = 'ai-status-chip failed';
+  const el = document.getElementById('score-' + name);
+  if (el) el.textContent = 'N/A';
+}
+function resetChips() {
+  ['mediapipe','posenet','lighting'].forEach(n => {
+    const chip = document.getElementById('chip-' + n);
+    if (chip) chip.className = 'ai-status-chip loading';
+    const el = document.getElementById('score-' + n);
+    if (el) el.textContent = '…';
+  });
+}
+
+function setAccuracy(pct) {
+  pct = Math.max(0, Math.min(100, Math.round(pct)));
+  document.getElementById('accuracyValue').textContent = pct + '%';
+  document.getElementById('accuracyFill').style.width  = pct + '%';
+  document.getElementById('accuracyFill').style.background =
+    pct >= PASS_THRESHOLD ? 'linear-gradient(90deg,#60c060,#40a040)' :
+    pct >= 60             ? 'linear-gradient(90deg,var(--wood-honey),var(--gold))' :
+                            'linear-gradient(90deg,#8b4020,#c05030)';
+}
+
+function updateFeedback(acc, evaluator) {
+  const el = document.getElementById('exerciseFeedback');
+  if (acc < 20) {
+    el.textContent = 'Make sure your full body is visible and well lit…';
+    return;
+  }
+  const hints = {
+    upright: [
+      'Stand straighter — shoulders level, spine tall, chin up.',
+      'Align your shoulders horizontally and keep your head lifted.',
+      'Almost — hold that posture steady for a moment…',
+      '✦ Excellent upright posture!'
+    ],
+    widestance: [
+      'Widen your feet and place your hands firmly on your hips.',
+      'Spread your feet wider and push your elbows outward.',
+      'Hold that wide, confident stance still…',
+      '✦ Powerful stance confirmed!'
+    ],
+    chinlevel: [
+      'Lift your chin until it's parallel to the floor.',
+      'Keep your chin level — don't look down or up.',
+      'Excellent — hold that chin position still…',
+      '✦ Perfect head alignment!'
+    ],
+    custom: ['Adjust your position…','Getting there…','Hold still…','✦ Good posture!']
+  };
+  const set = hints[evaluator] || hints.custom;
+  if      (acc < 40) el.textContent = set[0];
+  else if (acc < 60) el.textContent = set[1];
+  else if (acc < PASS_THRESHOLD) el.textContent = set[2];
+  else               el.textContent = set[3];
+}
+
+// ── Pass / Fail / Navigation ──
+function onPassed() {
+  const msgs = [
+    'All AI models confirmed outstanding alignment — remarkable!',
+    'MediaPipe and PoseNet both detected perfect form. Superb!',
+    'Excellent — your posture scored above 80% across all evaluators!',
+    'Brilliant form — your body language commands real presence.'
+  ];
+  document.getElementById('congratsMsg').textContent = msgs[Math.floor(Math.random()*msgs.length)];
+  recordTrial(currentAccuracy, true);
+  stopCamera();
+  overlay.classList.add('hidden');
+  document.getElementById('congratsPopup').classList.remove('hidden');
+}
+function onFailed() {
+  document.getElementById('exerciseFeedback').textContent = 'Time\'s up — tap Try Again or replay the instructions.';
+  document.getElementById('tryAgainBtn').style.display = 'block';
+  recordTrial(currentAccuracy, false);
+}
+function retryExercise() {
+  document.getElementById('tryAgainBtn').style.display = 'none';
+  mpLandmarks = null; pnPose = null;
+  setAccuracy(0); resetChips();
+  startScoring(nextCheckpoint);
+}
+function replayInstructions() {
+  stopCamera();
+  overlay.classList.add('hidden');
+  exerciseActive = false;
+  clearInterval(scoringInterval);
+  mpLandmarks = null; pnPose = null;
+  video.currentTime = CHECKPOINTS[nextCheckpoint].replayTime;
+  video.play();
+  showToast('Replaying instructions — exercise will pause again when reached.');
+}
+function skipExercise() {
+  stopCamera(); overlay.classList.add('hidden');
+  exerciseActive = false; nextCheckpoint++; video.play();
+}
+function continueVideo() {
+  document.getElementById('congratsPopup').classList.add('hidden');
+  exerciseActive = false; nextCheckpoint++; video.play();
+}
+function recordTrial(accuracy, passed) {
+  trials.push({ accuracy, passed });
+  document.getElementById('trialCount').textContent  = trials.length;
+  document.getElementById('passCount').textContent   = trials.filter(x=>x.passed).length;
+  document.getElementById('avgAccuracy').textContent = Math.round(trials.reduce((s,x)=>s+x.accuracy,0)/trials.length)+'%';
+  const history = JSON.parse(localStorage.getItem('tp_history')||'[]');
+  history.push({ type: SESSION_TYPE, accuracy, passed, timestamp: new Date().toISOString() });
+  localStorage.setItem('tp_history', JSON.stringify(history));
+  authFetch(API_BASE + '/history',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:SESSION_TYPE,accuracy,passed})}).catch(()=>{});
+}
+
+  // ── Fix 1: preventPlay at module scope so removeEventListener can detach it ──
+  const SESSION_KEY = 'bodypostures';
+  let _mainVideo = null;
+  function _preventVideoPlay(e) { e.preventDefault(); if (_mainVideo) _mainVideo.pause(); }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    _mainVideo = document.getElementById('mainVideo');
+    _mainVideo.controls = false;
+    _mainVideo.addEventListener('play', _preventVideoPlay);
+
+    runEnvironmentCheck('camera', () => {
+      // User agreed — auto-grant camera consent so exercise checkpoints can proceed
+      const camBox = document.getElementById('camPermCheck');
+      if (camBox) camBox.checked = true;
+
+      _mainVideo.removeEventListener('play', _preventVideoPlay);
+      _mainVideo.controls = true;
+      const saved = loadSessionProgress(SESSION_KEY);
+      if (saved && saved.checkpointIndex > 0) {
+        document.getElementById('resumeMsg').textContent =
+          'You reached checkpoint ' + saved.checkpointIndex + ' last time. Resume from there?';
+        document.getElementById('resumePopup').classList.remove('hidden');
+      } else {
+        // Start video immediately if no saved progress
+        _mainVideo.play().catch(() => {});
+        startAutoSave();
+      }
+    });
+  });
+
+  // CDN offline detection — show warning if key libraries aren't loaded after 8s
+  setTimeout(() => {
+    const isCameraPage = document.getElementById('camFeed') !== null;
+    const isMicPage    = document.getElementById('waveformCanvas') !== null;
+    let missing = false;
+    if (isCameraPage) {
+      if (typeof Pose === 'undefined' && typeof faceapi === 'undefined' && typeof FaceMesh === 'undefined') missing = true;
+    }
+    // Mic page uses only Web Audio API — always available, no CDN needed
+    if (missing) {
+      const banner = document.getElementById('cdnWarningBanner');
+      if (banner) banner.style.display = 'block';
+    }
+  }, 8000);
+
+  // ── Fix 3: Session resume / auto-save ──
+  let _autoSaveInterval = null;
+
+  function startAutoSave() {
+    clearInterval(_autoSaveInterval);
+    _autoSaveInterval = setInterval(() => {
+      if (!exerciseActive && video.currentTime > 2) {
+        saveSessionProgress(SESSION_KEY, nextCheckpoint, video.currentTime);
+      }
+    }, 5000);
+  }
+
+  function resumeSession() {
+    const saved = loadSessionProgress(SESSION_KEY);
+    document.getElementById('resumePopup').classList.add('hidden');
+    if (saved) {
+      nextCheckpoint = saved.checkpointIndex;
+      video.currentTime = saved.videoTime;
+    }
+    video.play();
+    startAutoSave();
+  }
+
+  function startFresh() {
+    clearSessionProgress(SESSION_KEY);
+    document.getElementById('resumePopup').classList.add('hidden');
+    nextCheckpoint = 0;
+    video.currentTime = 0;
+    video.play();
+    startAutoSave();
+  }
+
+  // Clear progress when all checkpoints are done
+  video.addEventListener('ended', () => {
+    clearSessionProgress(SESSION_KEY);
+    clearInterval(_autoSaveInterval);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="signup.html">Register</a>
+    </div>
+  </div>
+</nav>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a href="index.html" class="back-btn">← Back to Home</a>
+    <div class="wood-panel">
+      <p class="title-main">Welcome Back</p>
+      <p class="title-sub">Sign into your archive</p>
+      <hr class="gold-rule">
+
+      <div class="form-group">
+        <label for="username">User ID</label>
+        <input type="text" id="username" placeholder="Your username"
+               autocomplete="username" maxlength="30">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Your password"
+               autocomplete="current-password">
+      </div>
+
+      <div class="check-row mt-8 mb-16">
+        <input type="checkbox" id="rememberMe">
+        <label for="rememberMe">Remember me for 7 days</label>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="loginBtn" onclick="login()">
+        Enter the Archive
+      </button>
+
+      <div class="auth-footer-row mt-16">
+        <a href="index.html">← Go to Home</a>
+        <a href="signup.html">Create an account →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions">
+      <button class="btn btn-secondary" onclick="closePopup()">Close</button>
+    </div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script src="js/auth-guard.js"></script>
+<script>
+  // Redirect immediately if already logged in
+  (function () {
+    const sess = getSession();
+    if (sess) window.location.replace(sess.role === 'admin' ? 'admin.html' : 'dashboard.html');
+  })();
+
+  // Enter key submits
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') login();
+  });
+
+  async function login() {
+    const username   = document.getElementById('username').value.trim();
+    const password   = document.getElementById('password').value;
+    const rememberMe = document.getElementById('rememberMe').checked;
+
+    if (!username || !password) {
+      return showPopup('Missing Fields', 'Please enter both your User ID and password.', 'error');
+    }
+
+    const btn = document.getElementById('loginBtn');
+    btn.disabled    = true;
+    btn.textContent = 'Signing in…';
+
+    try {
+      const res  = await fetch('/login', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        saveSession(data, rememberMe);
+        window.location.replace(data.role === 'admin' ? 'admin.html' : 'dashboard.html');
+      } else {
+        showPopup('Login Failed', data.msg || 'Invalid credentials.', 'error');
+        btn.disabled    = false;
+        btn.textContent = 'Enter the Archive';
+      }
+    } catch (_) {
+      showPopup('Cannot Reach Server', 'Check your internet connection or try again shortly.', 'error');
+      btn.disabled    = false;
+      btn.textContent = 'Enter the Archive';
+    }
+  }
+</script>
+</body>
+</html>

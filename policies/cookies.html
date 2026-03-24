@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cookie Policy — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="../index.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="terms.html">Terms</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="../index.html">Home</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <a href="javascript:history.back()" class="back-btn">← Go Back</a>
+
+  <p class="title-main">Cookie &amp; Storage Policy</p>
+  <p class="title-sub">How we use browser storage on your device</p>
+  <hr class="gold-rule">
+
+  <div class="wood-panel">
+
+    <div class="policy-section">
+      <h3>Overview</h3>
+      <p>TeenagerPlaybook does not use traditional HTTP cookies. Instead, we use browser-native storage mechanisms (localStorage and sessionStorage) to maintain your session and cache your exercise data locally.</p>
+    </div>
+
+    <div class="policy-section">
+      <h3>1. Session Storage (sessionStorage)</h3>
+      <p>Used when you log in <strong style="color:var(--gold);">without</strong> selecting "Remember me":</p>
+      <ul>
+        <li>Stores your authentication token for the current browser session</li>
+        <li>Automatically cleared when the browser tab or window is closed</li>
+        <li>Cleared on logout</li>
+      </ul>
+    </div>
+
+    <div class="policy-section">
+      <h3>2. Local Storage (localStorage) — Remember Me</h3>
+      <p>Used when you select "Remember me for 7 days":</p>
+      <ul>
+        <li>Stores your authentication token with a 7-day expiry timestamp</li>
+        <li>Stores your username and role for UI personalization</li>
+        <li>Automatically invalidated after 7 days</li>
+        <li>Cleared immediately on logout</li>
+      </ul>
+    </div>
+
+    <div class="policy-section">
+      <h3>3. Exercise History Cache</h3>
+      <p>Your exercise history (session type, accuracy scores, timestamps) is cached in localStorage for:</p>
+      <ul>
+        <li>Offline history access when the server is unavailable</li>
+        <li>Instant display of the History page without server delay</li>
+        <li>Merging with server-side records when connectivity is restored</li>
+      </ul>
+      <p>This data can be cleared at any time from the History page.</p>
+    </div>
+
+    <div class="policy-section">
+      <h3>4. Consent Flag</h3>
+      <p>A consent flag is stored in sessionStorage to prevent the consent popup from appearing repeatedly within the same browsing session. This flag does not contain any personal information.</p>
+    </div>
+
+    <div class="policy-section">
+      <h3>5. No Third-Party Tracking</h3>
+      <p>We do not use any advertising cookies, analytics tracking cookies, or third-party session identifiers. No data from your browser storage is shared with external services.</p>
+    </div>
+
+    <div class="policy-section">
+      <h3>6. How to Clear Storage</h3>
+      <p>You can clear all TeenagerPlaybook storage at any time by:</p>
+      <ul>
+        <li>Logging out (clears authentication tokens)</li>
+        <li>Using the "Clear All History" button in the History page</li>
+        <li>Clearing your browser's local/session storage in browser settings</li>
+      </ul>
+    </div>
+
+    <p class="muted" style="font-size:0.8rem;margin-top:24px;">Last updated: 2025. IB MYP 5 Personal Project.</p>
+  </div>
+</div>
+
+</body>
+</html>

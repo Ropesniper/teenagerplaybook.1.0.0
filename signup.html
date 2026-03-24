@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .role-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .role-card {
+      background: rgba(20,10,4,0.55);
+      border: 2px solid var(--wood-mid);
+      border-radius: 14px;
+      padding: 16px 12px;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      user-select: none;
+    }
+    .role-card:hover { border-color: var(--gold-dim); transform: translateY(-2px); }
+    .role-card.selected {
+      border-color: var(--gold);
+      background: rgba(80,50,12,0.45);
+      box-shadow: 0 0 0 1px var(--gold-dim);
+    }
+    .role-icon { font-size: 2rem; display: block; margin-bottom: 6px; }
+    .role-name { font-family: 'Cinzel', serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; color: var(--text-main); margin-bottom: 4px; }
+    .role-desc { font-family: 'Libre Baskerville', serif; font-size: 0.72rem; color: var(--text-dim); line-height: 1.4; }
+    .ctx-fields { display: none; }
+    .ctx-fields.visible { display: block; }
+    .age-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .age-chip {
+      background: rgba(20,10,4,0.5);
+      border: 1px solid var(--wood-mid);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .age-chip:hover  { border-color: var(--gold-dim); color: var(--text-main); }
+    .age-chip.active { border-color: var(--gold); color: var(--gold); background: rgba(80,50,12,0.35); }
+  </style>
+</head>
+<body>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="login.html">Sign In</a>
+    </div>
+  </div>
+</nav>
+
+<div class="auth-wrap">
+  <div class="auth-card" style="max-width:560px;">
+    <a href="index.html" class="back-btn">← Back to Home</a>
+    <div class="wood-panel">
+      <p class="title-main">Create Account</p>
+      <p class="title-sub">Join the Archive — your journey begins here</p>
+      <hr class="gold-rule">
+
+      <!-- Role picker -->
+      <div class="form-group">
+        <label style="display:block;margin-bottom:10px;">I am joining as…</label>
+        <div class="role-grid">
+          <div class="role-card selected" data-type="teenager" onclick="selectRole('teenager')">
+            <span class="role-icon">🎓</span>
+            <p class="role-name">Teenager</p>
+            <p class="role-desc">I want to build my own communication skills</p>
+          </div>
+          <div class="role-card" data-type="parent" onclick="selectRole('parent')">
+            <span class="role-icon">👨‍👩‍👧</span>
+            <p class="role-name">Parent</p>
+            <p class="role-desc">I'm supporting my child's development</p>
+          </div>
+          <div class="role-card" data-type="teacher" onclick="selectRole('teacher')">
+            <span class="role-icon">📚</span>
+            <p class="role-name">Teacher</p>
+            <p class="role-desc">I use this platform with a class or group</p>
+          </div>
+          <div class="role-card" data-type="other" onclick="selectRole('other')">
+            <span class="role-icon">✦</span>
+            <p class="role-name">Self-Directed</p>
+            <p class="role-desc">Adult learning for personal or professional growth</p>
+          </div>
+        </div>
+        <input type="hidden" id="selectedRole" value="teenager">
+      </div>
+
+      <hr class="gold-rule">
+
+      <!-- Core fields -->
+      <div class="form-group">
+        <label for="displayName">Your Name <span class="muted" style="font-size:0.78rem;">(shown in the app)</span></label>
+        <input type="text" id="displayName" placeholder="e.g. James T." autocomplete="name" maxlength="60">
+      </div>
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="username">User ID <span class="muted" style="font-size:0.78rem;">(used to log in — letters, numbers, _ or - only)</span></label>
+        <input type="text" id="username" placeholder="e.g. james_t" autocomplete="username" maxlength="30">
+      </div>
+      <div class="form-group">
+        <label for="password">Password <span class="muted" style="font-size:0.78rem;">(at least 6 characters)</span></label>
+        <input type="password" id="password" placeholder="Create a strong password" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" placeholder="Repeat your password">
+      </div>
+
+      <!-- Teenager context -->
+      <div class="ctx-fields visible" id="ctx-teenager">
+        <div class="form-group">
+          <label>Age Group <span class="muted" style="font-size:0.78rem;">(optional)</span></label>
+          <div class="age-chips" id="chips-teenager">
+            <span class="age-chip" data-age="under-13">Under 13</span>
+            <span class="age-chip" data-age="13-15">13–15</span>
+            <span class="age-chip" data-age="16-18">16–18</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="goals-teenager">What do you most want to improve? <span class="muted" style="font-size:0.78rem;">(optional)</span></label>
+          <input type="text" id="goals-teenager" placeholder="e.g. Confidence in presentations, eye contact…" maxlength="300">
+        </div>
+      </div>
+
+      <!-- Parent context -->
+      <div class="ctx-fields" id="ctx-parent">
+        <div class="form-group">
+          <label for="inst-parent">Child's School / Institution <span class="muted" style="font-size:0.78rem;">(optional)</span></label>
+          <input type="text" id="inst-parent" placeholder="e.g. St. Andrew's Secondary" maxlength="120">
+        </div>
+        <div class="form-group">
+          <label>Child's Age Group <span class="muted" style="font-size:0.78rem;">(optional)</span></label>
+          <div class="age-chips" id="chips-parent">
+            <span class="age-chip" data-age="under-13">Under 13</span>
+            <span class="age-chip" data-age="13-15">13–15</span>
+            <span class="age-chip" data-age="16-18">16–18</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="goals-parent">What would you like your child to work on? <span class="muted" style="font-size:0.78rem;">(optional)</span></label>
+          <input type="text" id="goals-parent" placeholder="e.g. Confidence in social situations…" maxlength="300">
+        </div>
+      </div>
+
+      <!-- Teacher context -->
+      <div class="ctx-fields" id="ctx-teacher">
+        <div class="form-group">
+          <label for="inst-teacher">School / Institution <span class="muted" style="font-size:0.78rem;">(optional)</span></label>
+          <input type="text" id="inst-teacher" placeholder="e.g. Northfield Academy" maxlength="120">
+        </div>
+        <div class="form-group">
+          <label>Primary Student Age Group <span class="muted" style="font-size:0.78rem;">(optional)</span></label>
+          <div class="age-chips" id="chips-teacher">
+            <span class="age-chip" data-age="under-13">Under 13</span>
+            <span class="age-chip" data-age="13-15">13–15</span>
+            <span class="age-chip" data-age="16-18">16–18</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="goals-teacher">Teaching goals for this platform <span class="muted" style="font-size:0.78rem;">(optional)</span></label>
+          <input type="text" id="goals-teacher" placeholder="e.g. Improve presentation skills before assessments…" maxlength="300">
+        </div>
+      </div>
+
+      <!-- Other context -->
+      <div class="ctx-fields" id="ctx-other">
+        <div class="form-group">
+          <label>Age Group <span class="muted" style="font-size:0.78rem;">(optional)</span></label>
+          <div class="age-chips" id="chips-other">
+            <span class="age-chip" data-age="18-25">18–25</span>
+            <span class="age-chip" data-age="25+">25+</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="goals-other">What brings you here? <span class="muted" style="font-size:0.78rem;">(optional)</span></label>
+          <input type="text" id="goals-other" placeholder="e.g. Job interviews, public speaking, leadership…" maxlength="300">
+        </div>
+      </div>
+
+      <hr class="gold-rule">
+
+      <!-- Consent -->
+      <p class="panel-label">Consent &amp; Agreements</p>
+      <div class="check-row">
+        <input type="checkbox" id="agreeTerms">
+        <label for="agreeTerms">
+          I have read and accept the
+          <a href="policies/terms.html" target="_blank">Terms of Use</a> and
+          <a href="policies/privacy.html" target="_blank">Privacy Policy</a>.
+        </label>
+      </div>
+      <div class="check-row">
+        <input type="checkbox" id="agreeCookies">
+        <label for="agreeCookies">
+          I consent to local storage for session management.
+          (<a href="policies/cookies.html" target="_blank">details</a>)
+        </label>
+      </div>
+      <div class="check-row" id="cameraConsentRow">
+        <input type="checkbox" id="agreeCamera">
+        <label for="agreeCamera">
+          I consent to camera and microphone access during exercises.
+          Processing happens entirely in my browser — nothing is recorded or transmitted.
+        </label>
+      </div>
+      <div class="check-row">
+        <input type="checkbox" id="agreeAge">
+        <label for="agreeAge" id="agreeAgeLabel">
+          I confirm this platform is being used for educational purposes only.
+        </label>
+      </div>
+
+      <button class="btn btn-primary btn-full mt-16" id="signupBtn" onclick="signup()">
+        Create My Account
+      </button>
+      <div class="auth-footer-row mt-16">
+        <span></span>
+        <a href="login.html">Already have an account? →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions">
+      <button class="btn btn-secondary" onclick="closePopup()">Close</button>
+    </div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script src="js/auth-guard.js"></script>
+<script>
+  // Role metadata — drives consent and label changes
+  var ROLE_META = {
+    teenager: { camera: true,  ageLabel: 'I confirm I am using this platform for educational purposes.' },
+    parent:   { camera: false, ageLabel: 'I confirm I am an adult supporting a young person\'s education.' },
+    teacher:  { camera: false, ageLabel: 'I confirm I am an educator using this platform professionally.' },
+    other:    { camera: true,  ageLabel: 'I confirm this platform is being used for educational or self-improvement purposes.' },
+  };
+
+  var _selectedAge = {};   // { 'teenager': '13-15', 'parent': 'under-13', ... }
+
+  function selectRole(type) {
+    // Update card selection
+    document.querySelectorAll('.role-card').forEach(function (c) {
+      c.classList.toggle('selected', c.dataset.type === type);
+    });
+    document.getElementById('selectedRole').value = type;
+
+    // Show/hide context blocks
+    ['teenager', 'parent', 'teacher', 'other'].forEach(function (t) {
+      var el = document.getElementById('ctx-' + t);
+      if (el) el.classList.toggle('visible', t === type);
+    });
+
+    // Camera consent row
+    var meta = ROLE_META[type] || ROLE_META.teenager;
+    var camRow = document.getElementById('cameraConsentRow');
+    camRow.style.display = meta.camera ? '' : 'none';
+    document.getElementById('agreeCamera').checked = !meta.camera; // auto-grant for non-camera roles
+
+    // Age consent label
+    document.getElementById('agreeAgeLabel').textContent = meta.ageLabel;
+  }
+
+  // Wire age chips
+  document.querySelectorAll('.age-chips').forEach(function (container) {
+    container.querySelectorAll('.age-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var groupId = container.id; // e.g. 'chips-teenager'
+        container.querySelectorAll('.age-chip').forEach(function (c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+        _selectedAge[groupId] = chip.dataset.age;
+      });
+    });
+  });
+
+  function getContextData() {
+    var role = document.getElementById('selectedRole').value;
+    var goals = '', institution = '', ageGroup = '';
+    var chipsId = 'chips-' + role;
+
+    ageGroup    = _selectedAge[chipsId] || '';
+    goals       = (document.getElementById('goals-' + role) || {}).value || '';
+    institution = (document.getElementById('inst-' + role)  || {}).value || '';
+
+    return { goals: goals.trim(), institution: institution.trim(), ageGroup: ageGroup };
+  }
+
+  async function signup() {
+    var role        = document.getElementById('selectedRole').value;
+    var displayName = document.getElementById('displayName').value.trim();
+    var email       = document.getElementById('email').value.trim();
+    var username    = document.getElementById('username').value.trim();
+    var password    = document.getElementById('password').value;
+    var confirm     = document.getElementById('confirmPassword').value;
+    var ctx         = getContextData();
+    var meta        = ROLE_META[role] || ROLE_META.teenager;
+
+    // Validation
+    if (!displayName)       return showPopup('Missing Name',     'Please enter your name.',                'error');
+    if (!email)             return showPopup('Missing Email',    'Please enter your email address.',       'error');
+    if (!username)          return showPopup('Missing User ID',  'Please choose a User ID.',               'error');
+    if (!/^[a-zA-Z0-9_-]{2,30}$/.test(username))
+                            return showPopup('Invalid User ID',  'User ID must be 2–30 characters: letters, numbers, _ or - only.', 'error');
+    if (!password || password.length < 6)
+                            return showPopup('Weak Password',    'Password must be at least 6 characters.','error');
+    if (password !== confirm)
+                            return showPopup('Password Mismatch','Your passwords do not match.',           'error');
+
+    var required = ['agreeTerms', 'agreeCookies', 'agreeAge'];
+    if (meta.camera) required.push('agreeCamera');
+    for (var i = 0; i < required.length; i++) {
+      if (!document.getElementById(required[i]).checked) {
+        return showPopup('Consent Required', 'Please accept all required agreements before continuing.', 'warning');
+      }
+    }
+
+    var btn = document.getElementById('signupBtn');
+    btn.disabled    = true;
+    btn.textContent = 'Creating account…';
+
+    try {
+      var res = await fetch('/signup', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          email,
+          username,
+          password,
+          accountType:    role,
+          displayName,
+          ageGroup:       ctx.ageGroup,
+          profileDetails: { institution: ctx.institution, goals: ctx.goals },
+        }),
+      });
+      var data = await res.json();
+
+      if (res.ok) {
+        showPopup('Account Created!', 'Redirecting you to sign in…', 'success');
+        setTimeout(function () { window.location.replace('login.html'); }, 2000);
+      } else {
+        showPopup('Registration Failed', data.msg || 'Something went wrong. Please try again.', 'error');
+        btn.disabled    = false;
+        btn.textContent = 'Create My Account';
+      }
+    } catch (_) {
+      showPopup('Cannot Reach Server', 'Check your internet connection and try again.', 'error');
+      btn.disabled    = false;
+      btn.textContent = 'Create My Account';
+    }
+  }
+</script>
+</body>
+</html>

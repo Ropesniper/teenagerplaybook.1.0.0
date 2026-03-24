@@ -1,0 +1,1819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .note-inbox-item {
+      background: rgba(30,15,8,0.45);
+      border: 1px solid var(--wood-mid);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      transition: border-color 0.2s;
+    }
+    .note-inbox-item.has-reply { border-color: var(--gold-dim); }
+    .note-inbox-item.pending   { border-left: 3px solid #e09040; }
+    .note-inbox-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .note-inbox-user {
+      font-family: 'Cinzel', serif;
+      font-size: 0.82rem;
+      color: var(--gold);
+      letter-spacing: 0.05em;
+    }
+    .note-inbox-date {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+    .note-inbox-msg {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+    .note-reply-area {
+      border-top: 1px solid rgba(180,130,40,0.15);
+      padding-top: 12px;
+      margin-top: 4px;
+    }
+    .reply-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem;
+      color: var(--gold-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .pending-tag {
+      display: inline-block;
+      background: rgba(180,100,20,0.3);
+      color: #e09040;
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      border: 1px solid rgba(180,100,20,0.5);
+      border-radius: 6px;
+      padding: 2px 8px;
+      letter-spacing: 0.06em;
+    }
+    .replied-tag {
+      display: inline-block;
+      background: rgba(40,120,40,0.2);
+      color: #60c060;
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      border: 1px solid rgba(40,120,40,0.4);
+      border-radius: 6px;
+      padding: 2px 8px;
+      letter-spacing: 0.06em;
+    }
+    .filter-chip {
+      background: rgba(20,10,4,0.5);
+      border: 1px solid var(--wood-mid);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    .filter-chip:hover  { border-color: var(--gold-dim); color: var(--text-main); }
+    .filter-chip.active { border-color: var(--gold); color: var(--gold); background: rgba(80,50,12,0.35); }
+
+    /* ── Admin Guide ── */
+    .guide-block {
+      border-left: 3px solid var(--wood-mid);
+      padding-left: 20px;
+      margin-bottom: 28px;
+    }
+    .guide-block:last-of-type { margin-bottom: 0; }
+    .guide-heading {
+      font-family: 'Cinzel', serif;
+      font-size: 0.95rem;
+      color: var(--gold);
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+      margin-top: 0;
+    }
+    .guide-subheading {
+      font-family: 'Cinzel', serif;
+      font-size: 0.78rem;
+      color: var(--gold-dim);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin: 14px 0 6px;
+    }
+    .guide-text {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      line-height: 1.75;
+      margin-bottom: 8px;
+    }
+    .guide-text code, .guide-table code {
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      background: rgba(10,5,2,0.5);
+      border: 1px solid var(--wood-mid);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: var(--wood-honey);
+    }
+    .guide-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.82rem;
+    }
+    .guide-table th {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.07em;
+      color: var(--gold-dim);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--wood-mid);
+      padding: 6px 10px 6px 0;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .guide-table td {
+      color: var(--text-muted);
+      padding: 7px 10px 7px 0;
+      border-bottom: 1px solid rgba(74,46,26,0.35);
+      vertical-align: top;
+      line-height: 1.55;
+    }
+    .guide-table tr:last-child td { border-bottom: none; }
+    .guide-list {
+      padding-left: 20px;
+      margin: 0 0 8px 0;
+    }
+    .guide-list li {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      line-height: 1.75;
+      margin-bottom: 6px;
+    }
+    #adminGuideSection .admin-section-title {
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+
+<!-- ── Server Health Banner (injected by JS when issues detected) ── -->
+<div id="healthBanner" style="display:none;"></div>
+
+<script src="js/auth-guard.js"></script>
+<script src="js/file-library.js"></script>
+<script>const _sess = requireAdmin();</script>
+
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="nav-brand">✦ TeenagerPlaybook</a>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="admin.html" class="active">Admin</a>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+  <p class="title-main">Archive Control Panel</p>
+  <p class="title-sub">Manage content, media, users, and personal sessions</p>
+  <hr class="gold-rule">
+
+  <!-- ── USER NOTES INBOX ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">✉️ User Notes Inbox</p>
+    <p class="muted mb-16" style="font-size:0.85rem;">Messages from users requesting personalised sessions or guidance. Reply with a message and optionally grant access to a specific video.</p>
+
+    <!-- Filter by account type -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+      <button class="filter-chip active" onclick="filterNotes('')">All</button>
+      <button class="filter-chip" onclick="filterNotes('teenager')">🎓 Teenagers</button>
+      <button class="filter-chip" onclick="filterNotes('parent')">👨‍👩‍👧 Parents</button>
+      <button class="filter-chip" onclick="filterNotes('teacher')">📚 Teachers</button>
+      <button class="filter-chip" onclick="filterNotes('other')">✦ Scholars</button>
+    </div>
+
+    <div id="notesInbox">
+      <p class="muted" style="font-style:italic;font-size:0.85rem;">Loading notes…</p>
+    </div>
+  </div>
+
+  <!-- ── VIDEO MANAGEMENT ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">📁 File Management</p>
+
+    <h3 class="panel-label" style="margin-bottom:10px;">Upload File</h3>
+    <p class="muted mb-16" style="font-size:0.85rem;">
+      Upload any file type — video, PDF, audio, image, or Office document. Choose the target session name or enter a custom filename. The extension is preserved automatically.
+    </p>
+
+    <div class="form-group">
+      <label for="videoTarget">Target / Filename</label>
+      <select id="videoTarget" onchange="handleTargetChange()">
+        <option value="BodyPostures">BodyPostures (session video)</option>
+        <option value="FacialExpression">FacialExpression (session video)</option>
+        <option value="Intonation">Intonation (session video)</option>
+        <option value="custom">Custom filename…</option>
+      </select>
+    </div>
+
+    <div class="form-group hidden" id="customFilenameWrap">
+      <label for="customFilename">Custom Filename (no spaces, no extension)</label>
+      <input type="text" id="customFilename" placeholder="e.g. personal_alice_posture">
+      <p class="muted" style="font-size:0.78rem;margin-top:4px;">File will be saved as: <span id="filenamePreview" style="color:var(--gold);">—</span></p>
+    </div>
+
+    <div class="drop-zone" id="dropZone"
+         onclick="document.getElementById('videoFileInput').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+      <div class="drop-zone-icon">📁</div>
+      <p class="drop-zone-text">Click or drag &amp; drop any file here</p>
+      <p class="muted" style="font-size:0.78rem;margin-top:4px;" id="selectedFileName">No file selected</p>
+      <input type="file" id="videoFileInput" accept="*" style="display:none;" onchange="onFileSelect(event)">
+    </div>
+
+    <button class="btn btn-primary" onclick="uploadVideo()">Upload File</button>
+    <div style="margin-top:8px;height:8px;border-radius:4px;background:rgba(40,20,10,0.4);overflow:hidden;">
+      <div id="uploadProgress" style="height:100%;width:0%;background:linear-gradient(90deg,var(--wood-honey),var(--gold));transition:width 0.3s;border-radius:4px;"></div>
+    </div>
+
+    <hr class="gold-rule">
+
+    <h3 class="panel-label">Files in Library</h3>
+    <div id="videoList"><p class="muted" style="font-style:italic;font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- ── PUBLISH FILE ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">📤 Publish File to Users</p>
+    <p class="muted mb-16" style="font-size:0.85rem;">
+      Publish a file from the library directly to users' dashboards.
+      "Everyone" shows it to all logged-in users. "Specific users" lets you pick individuals from the database.
+    </p>
+
+    <div class="form-group">
+      <label for="pubFilename">File (from library)</label>
+      <select id="pubFilename" style="width:100%;padding:10px 12px;background:rgba(20,10,4,0.6);border:1px solid var(--wood-mid);border-radius:8px;color:var(--text-main);font-family:'Cinzel',serif;font-size:0.82rem;">
+        <option value="">— select a file —</option>
+      </select>
+      <p class="muted" style="font-size:0.75rem;margin-top:4px;">Upload via File Management above. <button onclick="loadPublishPanel()" style="background:none;border:none;color:var(--gold-dim);font-family:'Cinzel',serif;font-size:0.7rem;cursor:pointer;text-decoration:underline;padding:0;">↻ Refresh list</button></p>
+    </div>
+
+    <div class="form-group">
+      <label for="pubLabel">Label shown to users</label>
+      <input type="text" id="pubLabel" placeholder="e.g. Week 3 — Posture Guide" maxlength="100">
+    </div>
+
+    <div class="form-group">
+      <label for="pubDesc">Short description (optional)</label>
+      <input type="text" id="pubDesc" placeholder="e.g. This week's reference sheet for the Body Postures session." maxlength="300">
+    </div>
+
+    <div class="form-group">
+      <label>Visible to</label>
+      <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Libre Baskerville',serif;font-size:0.88rem;color:var(--text-muted);">
+          <input type="radio" name="pubVisibility" value="everyone" checked
+                 onchange="pubToggleUserPicker(this.value)"
+                 style="accent-color:var(--gold);width:16px;height:16px;">
+          Everyone (all logged-in users)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Libre Baskerville',serif;font-size:0.88rem;color:var(--text-muted);">
+          <input type="radio" name="pubVisibility" value="specific"
+                 onchange="pubToggleUserPicker(this.value)"
+                 style="accent-color:var(--gold);width:16px;height:16px;">
+          Specific users only
+        </label>
+      </div>
+    </div>
+
+    <div id="pubUserPickerWrap" style="display:none;">
+      <div class="form-group">
+        <label>Select Users</label>
+        <p class="muted" style="font-size:0.78rem;margin-bottom:8px;">
+          Tick the users who should see this file on their dashboard.
+        </p>
+        <div id="pubUserPicker"
+             style="max-height:200px;overflow-y:auto;background:rgba(10,5,2,0.4);
+                    border:1px solid var(--wood-mid);border-radius:8px;padding:8px 12px;">
+          <p class="muted" style="font-style:italic;font-size:0.82rem;">Loading users…</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="publishFile()">Publish File ✦</button>
+
+    <hr class="gold-rule">
+
+    <h3 class="panel-label">Currently Published</h3>
+    <div id="publishedList">
+      <p class="muted" style="font-style:italic;font-size:0.85rem;">Loading…</p>
+    </div>
+  </div>
+
+  <!-- ── ERROR REPORTS ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">🐛 Error Reports from Users</p>
+    <p class="muted mb-16" style="font-size:0.85rem;">
+      Problems reported by users via the ⚠ button on every page.
+    </p>
+    <div id="errorReportsList">
+      <p class="muted" style="font-style:italic;font-size:0.85rem;">Loading…</p>
+    </div>
+  </div>
+
+  <!-- ── POLL & ANNOUNCEMENT MANAGEMENT ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">📢 Polls &amp; Announcements</p>
+
+    <h3 class="panel-label" style="margin-bottom:10px;">Create New</h3>
+    <div class="form-group">
+      <label for="pollQuestion">Question or Announcement Text</label>
+      <textarea id="pollQuestion" placeholder="e.g. Which session have you found most helpful this week?" style="min-height:70px;"></textarea>
+    </div>
+
+    <div id="pollOptionsWrap">
+      <label style="font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:8px;">
+        Poll Options <span class="muted" style="text-transform:none;letter-spacing:0;">(leave empty for announcement)</span>
+      </label>
+      <div id="optionsList">
+        <div class="form-group"><input type="text" class="poll-option-input" placeholder="Option 1"></div>
+        <div class="form-group"><input type="text" class="poll-option-input" placeholder="Option 2"></div>
+      </div>
+      <button class="btn btn-secondary btn-sm mt-8" onclick="addOption()">+ Add Option</button>
+    </div>
+
+    <div class="flex gap-12 mt-16" style="flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="createPoll()">Publish Poll</button>
+      <button class="btn btn-secondary" onclick="createAnnouncement()">📌 Publish Announcement</button>
+    </div>
+
+    <hr class="gold-rule">
+
+    <h3 class="panel-label">Existing Polls &amp; Announcements</h3>
+    <div id="adminPollList"><p class="muted" style="font-style:italic;font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- ── USER HISTORY ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">📊 User Session History</p>
+    <div class="form-group" style="max-width:300px;">
+      <label for="userFilter">Filter by Username</label>
+      <input type="text" id="userFilter" placeholder="Leave blank for all" oninput="filterHistory()">
+    </div>
+    <div id="adminHistoryList"><p class="muted" style="font-style:italic;font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- ── USERS ── -->
+  <div class="wood-panel admin-section">
+    <p class="admin-section-title">👤 Registered Users</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+      <button class="filter-chip active" onclick="filterUsers('')">All</button>
+      <button class="filter-chip" onclick="filterUsers('teenager')">🎓 Teenagers</button>
+      <button class="filter-chip" onclick="filterUsers('parent')">👨‍👩‍👧 Parents</button>
+      <button class="filter-chip" onclick="filterUsers('teacher')">📚 Teachers</button>
+      <button class="filter-chip" onclick="filterUsers('other')">✦ Scholars</button>
+    </div>
+    <div id="userList"><p class="muted" style="font-style:italic;font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SITE ADMIN GUIDE — visible only to admin, always available
+       ══════════════════════════════════════════════════════════ -->
+  <div class="wood-panel admin-section" id="adminGuideSection" style="margin-top:32px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;"
+         onclick="toggleGuide()">
+      <p class="admin-section-title" style="margin:0;">📖 Site Owner's Guide — How to Run TeenagerPlaybook</p>
+      <span id="guideToggleIcon"
+            style="font-family:'Cinzel',serif;font-size:0.82rem;color:var(--gold-dim);
+                   letter-spacing:0.06em;white-space:nowrap;padding-left:16px;">
+        SHOW ▾
+      </span>
+    </div>
+    <p class="muted" style="font-size:0.8rem;margin-top:6px;margin-bottom:0;">
+      Everything you need to manage, maintain, customise, and grow the platform. Click to expand.
+    </p>
+
+    <div id="adminGuideBody" style="display:none;margin-top:24px;">
+
+      <!-- ─── QUICK REFERENCE ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">⚡ Quick Reference</p>
+        <table class="guide-table">
+          <tr><th>What you want to do</th><th>Where to do it</th></tr>
+          <tr><td>Upload a session video or file</td><td>This page → File Management, or Dashboard → Upload Files (same result)</td></tr>
+          <tr><td>Publish a file to all users' dashboards</td><td>This page → Publish File → select file → "Everyone" → Publish</td></tr>
+          <tr><td>Publish a file to one specific user</td><td>Publish File → select file → "Specific users" → tick the user → Publish</td></tr>
+          <tr><td>Remove a published file from dashboards</td><td>Publish File → Currently Published → Unpublish (file itself is NOT deleted)</td></tr>
+          <tr><td>See error reports from users</td><td>This page → Error Reports section</td></tr>
+          <tr><td>Keep server awake (prevent cold starts)</td><td>Set up UptimeRobot to ping https://your-app.onrender.com/ping every 10 minutes</td></tr>
+          <tr><td>Reply to a user's note</td><td>This page → User Notes Inbox → write reply → Send Reply</td></tr>
+          <tr><td>Grant a personal file to a user</td><td>User Notes Inbox → fill in File Name field when replying</td></tr>
+          <tr><td>Post an announcement</td><td>This page → Polls &amp; Announcements → type text → Publish Announcement</td></tr>
+          <tr><td>Create a poll for users</td><td>Polls &amp; Announcements → add options → Publish Poll</td></tr>
+          <tr><td>Change when the AI pauses the video</td><td>Open bodypostures.html / facialexpression.html / intonation.html in a text editor → edit the CHECKPOINTS array</td></tr>
+          <tr><td>Change the pass score (default 80%)</td><td>Same files → change PASS_THRESHOLD value</td></tr>
+          <tr><td>Add a new session type</td><td>See "Adding a New Session" section below</td></tr>
+          <tr><td>See server health / memory / database status</td><td>Top of this page (health banner appears automatically)</td></tr>
+          <tr><td>Remove a user</td><td>This page → Registered Users → Remove button</td></tr>
+          <tr><td>Change the admin password</td><td>Edit server/.env file on your host → ADMIN_PASSWORD — then restart server</td></tr>
+        </table>
+      </div>
+
+      <!-- ─── THE AGREEMENT POPUP ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">🖱 The Pre-Session Agreement Popup</p>
+        <p class="guide-text">
+          Before any session (Body Postures, Facial Expressions, Intonation) starts, users see a popup
+          asking them to tick a checkbox and click "Begin Session". This popup is defined in
+          <code>js/env-check.js</code>. It replaced a slow automatic camera/mic scanner that took 8+ seconds.
+        </p>
+        <p class="guide-subheading">How to change the popup text</p>
+        <p class="guide-text">
+          Open <code>js/env-check.js</code>. Find the <code>items</code> array near the top of the
+          <code>runEnvironmentCheck()</code> function. There are two lists — one for camera sessions
+          (<code>isCam</code> is true) and one for mic sessions. Edit the strings inside those arrays.
+          Each string is plain text; you can include <code>&lt;strong&gt;</code> tags to bold words.
+        </p>
+        <p class="guide-subheading">How to change the consent label text</p>
+        <p class="guide-text">
+          In the same file, find the <code>&lt;label for="sessionAgreeTick"&gt;</code> HTML inside the
+          template string. Edit that sentence. The camera-specific privacy note
+          ("My camera feed is processed entirely in the browser…") is appended only when
+          <code>isCam</code> is true — controlled by the <code>${isCam ? '…' : ''}</code> expression.
+        </p>
+        <p class="guide-subheading">How to remove the popup entirely</p>
+        <p class="guide-text">
+          In each session page (<code>bodypostures.html</code>, <code>facialexpression.html</code>,
+          <code>intonation.html</code>), find the <code>runEnvironmentCheck(…, () =&gt; { … })</code>
+          call inside <code>DOMContentLoaded</code>. Replace the whole
+          <code>runEnvironmentCheck(…)</code> call with just the callback body directly.
+          The video will start immediately on page load.
+        </p>
+      </div>
+
+      <!-- ─── AI CHECKPOINTS ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">🤖 AI Session Checkpoints — Timing, Instructions &amp; Scoring</p>
+        <p class="guide-text">
+          Each session video pauses at specific timestamps and activates the camera or microphone
+          for an AI exercise. These pause points are called <strong>checkpoints</strong> and are fully
+          configurable in the session HTML files.
+        </p>
+
+        <p class="guide-subheading">Where to find the checkpoint config</p>
+        <p class="guide-text">
+          Open the session file (<code>bodypostures.html</code>, <code>facialexpression.html</code>,
+          or <code>intonation.html</code>) in any text editor. Near the top of the
+          <code>&lt;script&gt;</code> block, you will see a <code>const CHECKPOINTS = […]</code> array.
+          Each entry in the array is one pause point.
+        </p>
+
+        <p class="guide-subheading">What each field means</p>
+        <table class="guide-table">
+          <tr><th>Field</th><th>What it does</th><th>Example</th></tr>
+          <tr>
+            <td><code>time</code></td>
+            <td>Seconds into the video when it pauses for this exercise</td>
+            <td><code>30</code> — pauses at 0:30</td>
+          </tr>
+          <tr>
+            <td><code>replayTime</code></td>
+            <td>Seconds to jump back to when the user clicks "↩ Replay instructions"</td>
+            <td><code>20</code> — jumps back to 0:20</td>
+          </tr>
+          <tr>
+            <td><code>name</code></td>
+            <td>Title shown on the exercise overlay panel</td>
+            <td><code>'Exercise 2 — Power Pose'</code></td>
+          </tr>
+          <tr>
+            <td><code>instruction</code></td>
+            <td>The text instruction shown to the user during the exercise</td>
+            <td><code>'Stand with feet wide, hands on hips…'</code></td>
+          </tr>
+          <tr>
+            <td><code>aiEval</code></td>
+            <td>Description of what the AI is looking for (shown as a subtitle)</td>
+            <td><code>'Wide stance · elbows out · open torso'</code></td>
+          </tr>
+          <tr>
+            <td><code>evaluator</code></td>
+            <td><strong>Body Postures only.</strong> Which scoring algorithm to use.
+                Options: <code>'upright'</code>, <code>'widestance'</code>, <code>'chinlevel'</code>, <code>'custom'</code></td>
+            <td><code>'widestance'</code></td>
+          </tr>
+          <tr>
+            <td><code>emotion</code></td>
+            <td><strong>Facial Expressions only.</strong> Which emotion the AI expects.
+                Options: <code>'happy'</code>, <code>'neutral'</code>, <code>'sad'</code>, <code>'surprised'</code>, <code>'angry'</code></td>
+            <td><code>'happy'</code></td>
+          </tr>
+          <tr>
+            <td><code>pattern</code></td>
+            <td><strong>Intonation only.</strong> Which pitch pattern to score.
+                Options: <code>'rising'</code>, <code>'falling'</code>, <code>'emphasis'</code></td>
+            <td><code>'rising'</code></td>
+          </tr>
+          <tr>
+            <td><code>minSpeakSeconds</code></td>
+            <td><strong>Intonation only.</strong> Minimum seconds of speech before a score is accepted</td>
+            <td><code>2.5</code></td>
+          </tr>
+          <tr>
+            <td><code>phrase</code></td>
+            <td><strong>Intonation only.</strong> The sentence shown for the user to read aloud</td>
+            <td><code>'"Are you absolutely sure about that?"'</code></td>
+          </tr>
+        </table>
+
+        <p class="guide-subheading">Example: changing when a checkpoint fires</p>
+        <p class="guide-text">
+          If your video has a new exercise instruction at 1:20 (80 seconds), change
+          <code>time: 55</code> to <code>time: 80</code>. If the instruction in the video starts
+          at 1:10 (70 seconds), set <code>replayTime: 70</code> so users jump back to hear it again.
+        </p>
+
+        <p class="guide-subheading">Example: adding a fourth checkpoint</p>
+        <p class="guide-text">
+          Copy one of the existing checkpoint objects, paste it after the last one (before the
+          closing <code>]</code>), and update <code>time</code>, <code>name</code>,
+          <code>instruction</code>, and <code>evaluator</code>/<code>emotion</code>/<code>pattern</code>.
+          The system automatically handles any number of checkpoints.
+        </p>
+
+        <p class="guide-subheading">Changing the pass threshold</p>
+        <p class="guide-text">
+          Find <code>const PASS_THRESHOLD = 80;</code> in each session file and change the number.
+          <code>80</code> means 80% composite AI score required to pass an exercise.
+          Lowering it (e.g. to <code>65</code>) makes sessions easier; raising it (e.g. to <code>90</code>)
+          makes them more demanding. This must be changed in each session file separately.
+        </p>
+      </div>
+
+      <!-- ─── SESSION VIDEO UPLOADS ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">🎬 Uploading &amp; Managing Session Files</p>
+        <p class="guide-text">
+          All uploaded files live in the <code>/files/</code> directory on the server.
+          The server accepts any file type — video, PDF, audio, image, ZIP, Office document.
+          Maximum file size is 500 MB per upload.
+        </p>
+
+        <p class="guide-subheading">Standard session videos — required filenames</p>
+        <table class="guide-table">
+          <tr><th>Session</th><th>Required filename</th><th>Where it's referenced</th></tr>
+          <tr><td>Body Postures</td><td><code>BodyPostures.mp4</code></td><td>bodypostures.html → &lt;source src="files/BodyPostures.mp4"&gt;</td></tr>
+          <tr><td>Facial Expressions</td><td><code>FacialExpression.mp4</code></td><td>facialexpression.html → &lt;source src="files/FacialExpression.mp4"&gt;</td></tr>
+          <tr><td>Intonation</td><td><code>Intonation.mp4</code></td><td>intonation.html → &lt;source src="files/Intonation.mp4"&gt;</td></tr>
+        </table>
+        <p class="guide-text">
+          These names are <strong>case-sensitive</strong>. If you upload <code>bodypostures.mp4</code>
+          (lowercase) the session page will not find it. Use the upload dropdowns
+          which auto-set the correct name.
+        </p>
+
+        <p class="guide-subheading">Personal / custom files</p>
+        <p class="guide-text">
+          Any file uploaded with a custom name (e.g. <code>Session_James_Week2</code>) is stored in
+          <code>/files/</code> and can be granted to a specific user via the Notes Inbox reply form.
+          The user then sees a "Begin Session" or "Open" button in their dashboard under
+          "Your Personal Sessions".
+        </p>
+
+        <p class="guide-subheading">How the file library works</p>
+        <p class="guide-text">
+          Every logged-in user has a 📁 floating button in the bottom-right corner of every page.
+          Clicking it opens the File Library overlay. Admins see all uploaded files and can upload
+          or delete from there. Regular users see only files that have been personally granted to them
+          via note replies.
+        </p>
+
+        <p class="guide-subheading">What happens if a session video is missing</p>
+        <p class="guide-text">
+          The session page shows a placeholder message: "Video not yet uploaded. Admin Panel →
+          Upload Video → [session name]." The AI exercise overlays will still work — they will
+          just have nothing to pause. Upload the video and the placeholder disappears automatically.
+        </p>
+      </div>
+
+      <!-- ─── PUBLISH FILE TO DASHBOARDS ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">📤 Publishing Files to User Dashboards</p>
+        <p class="guide-text">
+          The Publish File system lets you push any file from the library directly onto users' dashboards
+          without them needing to request it. Published files appear in a "📂 Published Resources" section
+          that users see at the top of their dashboard.
+        </p>
+        <p class="guide-subheading">Visibility options</p>
+        <table class="guide-table">
+          <tr><th>Option</th><th>Who sees the file</th><th>Use it when</th></tr>
+          <tr>
+            <td>Everyone</td>
+            <td>All logged-in users, regardless of account type</td>
+            <td>General handouts, session reference sheets, announcement videos for everyone</td>
+          </tr>
+          <tr>
+            <td>Specific users</td>
+            <td>Only the individual users you tick in the list</td>
+            <td>Personal session recordings, parent-specific guides, one-to-one materials</td>
+          </tr>
+        </table>
+        <p class="guide-subheading">How to publish a file</p>
+        <ol class="guide-list">
+          <li>Upload the file first via File Management (above the Publish panel on this page).</li>
+          <li>Scroll to Publish File. Select the file from the dropdown.</li>
+          <li>Enter a label (shown to users, e.g. "Week 3 — Posture Reference Sheet").</li>
+          <li>Optionally add a short description.</li>
+          <li>Choose visibility: Everyone, or Specific users (tick names from the list).</li>
+          <li>Click Publish File. The file appears on the chosen users' dashboards immediately.</li>
+        </ol>
+        <p class="guide-subheading">Difference between Published Files and Personal Files (note grant)</p>
+        <p class="guide-text">
+          <strong>Published Files</strong> are proactive — you push them to dashboards without the user needing to ask.
+          They appear under "📂 Published Resources".<br>
+          <strong>Personal Files (note reply grants)</strong> are responsive — you grant a file in reply to a user's note request.
+          They appear under "✦ Your Personal Sessions".<br>
+          Both use files from the same library. You can grant the same file both ways.
+        </p>
+        <p class="guide-subheading">Unpublishing a file</p>
+        <p class="guide-text">
+          In the "Currently Published" list, click Unpublish. The file disappears from dashboards immediately.
+          The file itself remains in the library — it is not deleted.
+        </p>
+      </div>
+
+      <!-- ─── REPORT ERROR SYSTEM ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">🐛 Error Reports from Users</p>
+        <p class="guide-text">
+          Every protected page of the site has a small <strong>⚠ button</strong> in the bottom-right corner
+          (above the 📁 file library button). Any logged-in user can click it to report a problem —
+          a broken video, a score that didn't save, a page that won't load, anything.
+          Their report is sent to the server and appears in the Error Reports section on this admin panel.
+        </p>
+        <p class="guide-subheading">What you see in each report</p>
+        <table class="guide-table">
+          <tr><th>Field</th><th>What it tells you</th></tr>
+          <tr><td>Username</td><td>Who submitted the report</td></tr>
+          <tr><td>Page</td><td>Which page they were on (e.g. /bodypostures.html)</td></tr>
+          <tr><td>Description</td><td>What the user described — be as specific as they were</td></tr>
+          <tr><td>Date/time</td><td>When the report was submitted</td></tr>
+        </table>
+        <p class="guide-subheading">Workflow</p>
+        <ol class="guide-list">
+          <li>Review new (OPEN) reports when you visit the admin panel.</li>
+          <li>Investigate the issue described. Check the relevant session page yourself.</li>
+          <li>Click "Mark Resolved" once you've fixed or investigated it — this tags it RESOLVED so you know it's dealt with.</li>
+          <li>Click "Delete" to remove old resolved reports and keep the inbox clean.</li>
+        </ol>
+        <p class="guide-text">
+          The ⚠ button appears on all pages that load <code>js/auth-guard.js</code>:
+          dashboard, admin, bodypostures, facialexpression, intonation, and history.
+          It is not present on public pages (login, signup, index).
+        </p>
+      </div>
+
+      <!-- ─── NOTES & PERSONAL SESSIONS ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">✉️ User Notes &amp; Personal Sessions</p>
+        <p class="guide-text">
+          Users can send you a note from their dashboard. You reply from this panel.
+          Optionally, you can attach a file from the library to your reply —
+          the user then gets a personalised session card on their dashboard.
+        </p>
+
+        <p class="guide-subheading">Step-by-step: granting a personal session</p>
+        <ol class="guide-list">
+          <li>Upload the file first — File Management section above, or the 📁 library overlay.</li>
+          <li>Go to User Notes Inbox on this page. Find the user's note.</li>
+          <li>Write your reply in the "Your Reply" textarea.</li>
+          <li>In the "File Name" field, type the exact filename including extension
+              (e.g. <code>Session_James.mp4</code>). The hint below the field shows all available files.</li>
+          <li>Give it a label (e.g. "James — Week 2 Posture Review") and a short description.</li>
+          <li>Click Send Reply. The user sees the file on their dashboard immediately.</li>
+        </ol>
+
+        <p class="guide-subheading">The user's view</p>
+        <p class="guide-text">
+          When a user has been granted a file, they see a "✦ Your Personal Sessions" section at the
+          top of their dashboard above the standard session cards. Each granted file has an "Open"
+          button that launches the smart file viewer (video player, PDF embed, image view, or
+          download link depending on file type).
+        </p>
+
+        <p class="guide-subheading">Filtering notes by user type</p>
+        <p class="guide-text">
+          Use the filter chips (All / 🎓 Teenagers / 👨‍👩‍👧 Parents / 📚 Teachers / ✦ Scholars) to see
+          notes from specific user types. The badge next to each username shows which type they are.
+        </p>
+      </div>
+
+      <!-- ─── POLLS & ANNOUNCEMENTS ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">📢 Polls &amp; Announcements</p>
+        <p class="guide-text">
+          Polls and announcements both appear in the "From the Archive Desk" section on every
+          user's dashboard. Announcements are shown as pinned gold banners. Polls are shown
+          as interactive cards with vote buttons.
+        </p>
+
+        <p class="guide-subheading">Creating an announcement</p>
+        <ol class="guide-list">
+          <li>Type your message in the "Question or Announcement Text" box.</li>
+          <li>Leave all option fields empty.</li>
+          <li>Click "📌 Publish Announcement".</li>
+        </ol>
+        <p class="guide-text">Announcements show immediately on all logged-in dashboards.</p>
+
+        <p class="guide-subheading">Creating a poll</p>
+        <ol class="guide-list">
+          <li>Type your question in the text box.</li>
+          <li>Fill in at least 2 option fields. Click "+ Add Option" to add more.</li>
+          <li>Click "Publish Poll".</li>
+        </ol>
+        <p class="guide-text">
+          Users vote once per poll. They can change their vote by clicking a different option.
+          You can see who voted for what in the admin poll list (voter names shown in brackets).
+          Regular users only see vote counts — they cannot see who voted.
+        </p>
+
+        <p class="guide-subheading">Deleting a poll or announcement</p>
+        <p class="guide-text">
+          Scroll to "Existing Polls &amp; Announcements" and click Delete next to the item.
+          Deletion is permanent and removes all votes.
+        </p>
+      </div>
+
+      <!-- ─── ACCOUNT TYPES ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">👤 User Account Types &amp; Registration</p>
+        <p class="guide-text">
+          When users sign up, they choose their role. This changes their dashboard experience
+          (greeting, intro text, note prompt) but does not restrict what sessions they can access.
+        </p>
+        <table class="guide-table">
+          <tr><th>Type</th><th>Badge</th><th>Who it's for</th><th>Dashboard tone</th></tr>
+          <tr><td>Teenager</td><td>🎓 Teenager</td><td>The primary learner</td><td>Encouraging, practise-focused</td></tr>
+          <tr><td>Parent</td><td>👨‍👩‍👧 Parent</td><td>Supporting a child</td><td>Supportive, home-practice focused</td></tr>
+          <tr><td>Teacher</td><td>📚 Teacher</td><td>Classroom educator</td><td>Professional, cohort-focused</td></tr>
+          <tr><td>Other</td><td>✦ Scholar</td><td>Adult self-learner</td><td>Neutral, goal-focused</td></tr>
+        </table>
+        <p class="guide-text">
+          Camera consent is automatically granted and the camera consent checkbox hidden for
+          Parent and Teacher accounts (since they typically use the platform for observation,
+          not for doing exercises themselves). You can change this in <code>signup.html</code>
+          in the <code>ROLE_META</code> object — set <code>camera: true</code> to require
+          consent for any type.
+        </p>
+
+        <p class="guide-subheading">Removing a user</p>
+        <p class="guide-text">
+          Registered Users section → Remove button. This permanently deletes the user account,
+          all their session history, and all their notes. It cannot be undone.
+          You cannot remove the admin account.
+        </p>
+      </div>
+
+      <!-- ─── SERVER & HOSTING ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">🖥 Server, Hosting &amp; Health Monitoring</p>
+
+        <p class="guide-subheading">The health banner</p>
+        <p class="guide-text">
+          When you open this admin panel, the server's <code>/health</code> endpoint is polled
+          immediately and then every 60 seconds. If any issue is detected, a coloured banner
+          appears at the very top of this page (above the nav bar).
+        </p>
+        <table class="guide-table">
+          <tr><th>Banner colour</th><th>Icon</th><th>What it means</th><th>What to do</th></tr>
+          <tr>
+            <td style="color:#e07050;">Red / dark red</td><td>🔴</td>
+            <td>Critical: database disconnected, or server unreachable</td>
+            <td>Check MongoDB service and Render dashboard. Users cannot log in or save data.</td>
+          </tr>
+          <tr>
+            <td style="color:#c0a030;">Gold / amber</td><td>⚠️</td>
+            <td>Warning: high memory, large file library</td>
+            <td>Restart the server process; or delete unused files from the library.</td>
+          </tr>
+          <tr>
+            <td style="color:#7090c0;">Blue-ish info</td><td>ℹ️</td>
+            <td>Informational: cold start, server just woke up</td>
+            <td>No action needed — dismiss with ✕. This happens when Render wakes from sleep.</td>
+          </tr>
+        </table>
+        <p class="guide-text">
+          Info-level and warning-level banners have a ✕ dismiss button.
+          Critical banners cannot be dismissed — fix the underlying issue first.
+          A blocking popup also appears once per page load for critical issues.
+        </p>
+
+        <p class="guide-subheading">Render free-tier cold starts</p>
+        <p class="guide-text">
+          On Render's free tier, the server goes to sleep after 15 minutes of inactivity.
+          The first request after sleep takes 20–30 seconds to respond (a "cold start").
+          This is normal and not an error. To prevent it you can:
+          (a) upgrade to a paid Render plan, or
+          (b) set up a free "ping" service (e.g. UptimeRobot) to request
+          <code>https://your-app.onrender.com/health</code> every 10 minutes — but note that
+          the <code>/health</code> endpoint requires admin auth, so use a public endpoint instead
+          (you can add a <code>GET /ping</code> route in <code>server.js</code> that returns
+          <code>{ ok: true }</code> with no middleware).
+        </p>
+
+        <p class="guide-subheading">Environment variables — where secrets live</p>
+        <p class="guide-text">
+          On Render, go to your service → Environment → Environment Variables.
+          Never put these in any file that goes into Git.
+        </p>
+        <table class="guide-table">
+          <tr><th>Variable</th><th>What it is</th><th>How to change it</th></tr>
+          <tr><td><code>PORT</code></td><td>Port the server listens on</td><td>Render sets this automatically; leave it unless you know what you're doing</td></tr>
+          <tr><td><code>MONGO_URI</code></td><td>MongoDB connection string</td><td>Get from MongoDB Atlas → Connect → Drivers</td></tr>
+          <tr><td><code>JWT_SECRET</code></td><td>Signs all login tokens. Keep it secret and long.</td><td>Generate with: <code>node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"</code></td></tr>
+          <tr><td><code>ADMIN_USERNAME</code></td><td>Your admin login username</td><td>Change in env vars then restart; the account already in the DB will still work</td></tr>
+          <tr><td><code>ADMIN_PASSWORD</code></td><td>Your admin password</td><td>Change in env vars then delete your admin user from the DB so it gets re-created on restart</td></tr>
+          <tr><td><code>ADMIN_EMAIL</code></td><td>Admin account email</td><td>Same as above</td></tr>
+        </table>
+
+        <p class="guide-subheading">Restarting the server</p>
+        <p class="guide-text">
+          On Render: go to your service → top right → "Manual Deploy" → "Deploy latest commit".
+          Or push any commit to your connected repo.
+          On a VPS: <code>pm2 restart server</code> or <code>node server.js</code> in the
+          <code>server/</code> directory.
+        </p>
+
+        <p class="guide-subheading">MongoDB Atlas — the database</p>
+        <p class="guide-text">
+          All user accounts, session history, polls, and notes are stored in MongoDB.
+          To view or edit data directly, use MongoDB Compass (desktop app) or the Atlas web UI.
+          Collections: <code>users</code>, <code>histories</code>, <code>polls</code>, <code>notes</code>.
+          The <code>users</code> collection stores hashed passwords — never the plain text.
+          If you need to reset a user's password, delete their document and ask them to re-register,
+          or implement a password reset route in <code>server.js</code>.
+        </p>
+      </div>
+
+      <!-- ─── FILE STRUCTURE ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">🗂 File Structure — What Each File Does</p>
+        <table class="guide-table">
+          <tr><th>File</th><th>What it does</th><th>When to edit it</th></tr>
+          <tr><td><code>server/server.js</code></td><td>The entire backend. All API routes, database schemas, auth logic, file uploads, health check.</td><td>Adding new features, new routes, changing validation rules.</td></tr>
+          <tr><td><code>server/.env</code></td><td>All secrets and config. Never goes in Git.</td><td>Changing passwords, database URI, JWT secret.</td></tr>
+          <tr><td><code>js/auth-guard.js</code></td><td>Session management, authFetch wrapper, account type labels, popup/toast utilities. Loaded on every protected page.</td><td>Adding a new account type, changing session expiry, editing popup/toast behaviour.</td></tr>
+          <tr><td><code>js/env-check.js</code></td><td>The pre-session agreement popup. Tick-and-go.</td><td>Changing the popup text, instructions, or consent wording.</td></tr>
+          <tr><td><code>js/file-library.js</code></td><td>The 📁 floating file library overlay. Loaded on every protected page. Handles upload, browse, open, delete.</td><td>Adding new file type categories, changing the viewer for a type, editing the upload UI.</td></tr>
+          <tr><td><code>css/style.css</code></td><td>All visual styling. Antique wooden theme. CSS variables at the top.</td><td>Changing colours, fonts, spacing, responsiveness.</td></tr>
+          <tr><td><code>bodypostures.html</code></td><td>Body posture AI session. Contains CHECKPOINTS config, MediaPipe + PoseNet scoring.</td><td>Changing checkpoint timings, instructions, pass threshold, adding exercises.</td></tr>
+          <tr><td><code>facialexpression.html</code></td><td>Facial expression AI session. Contains CHECKPOINTS config, face-api.js scoring.</td><td>Same as above, with emotion targets.</td></tr>
+          <tr><td><code>intonation.html</code></td><td>Intonation / pitch AI session. Contains CHECKPOINTS, Web Audio API pitch scoring.</td><td>Same as above, with pitch patterns and phrase text.</td></tr>
+          <tr><td><code>dashboard.html</code></td><td>Main user hub. Shows personal sessions, standard sessions, polls, notes, admin upload panel.</td><td>Adding new session cards, changing the layout, editing the dashboard copy.</td></tr>
+          <tr><td><code>admin.html</code></td><td>This page. Notes inbox, file management, polls, history, users, health monitor, this guide.</td><td>Adding new admin tools, editing the guide.</td></tr>
+          <tr><td><code>login.html</code></td><td>Login page. Calls <code>/login</code> API, saves session.</td><td>Rarely. Only if changing login UI or adding OAuth.</td></tr>
+          <tr><td><code>signup.html</code></td><td>Registration. Role picker, contextual fields, consent checkboxes.</td><td>Adding new account types, changing consent wording.</td></tr>
+          <tr><td><code>history.html</code></td><td>User's session history. Donut charts, trend chart, log table.</td><td>Adding new chart types or history filters.</td></tr>
+          <tr><td><code>files/</code></td><td>All uploaded files. Created automatically by the server.</td><td>Never edit manually — use the upload panel above or the 📁 library.</td></tr>
+        </table>
+      </div>
+
+      <!-- ─── CSS & THEMING ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">🎨 Changing the Theme &amp; Visual Design</p>
+        <p class="guide-text">
+          All colours, fonts, and spacing are defined as CSS variables at the top of
+          <code>css/style.css</code>. Every page uses these variables — change one variable
+          and the whole site updates.
+        </p>
+        <table class="guide-table">
+          <tr><th>Variable</th><th>Default</th><th>What it controls</th></tr>
+          <tr><td><code>--wood-dark</code></td><td>#1e110a</td><td>Page background (darkest)</td></tr>
+          <tr><td><code>--wood-mid</code></td><td>#4a2e1a</td><td>Card borders, dividers</td></tr>
+          <tr><td><code>--gold</code></td><td>#d4a843</td><td>Primary accent — headings, buttons, highlights</td></tr>
+          <tr><td><code>--gold-dim</code></td><td>#9c7a30</td><td>Subtler gold — badges, secondary elements</td></tr>
+          <tr><td><code>--text-main</code></td><td>#f5e6c8</td><td>Primary text colour</td></tr>
+          <tr><td><code>--text-muted</code></td><td>#c8a87a</td><td>Body text, descriptions</td></tr>
+          <tr><td><code>--text-dim</code></td><td>#8a6840</td><td>Placeholders, timestamps, secondary labels</td></tr>
+        </table>
+        <p class="guide-text">
+          To change the font: the Google Fonts import is at the very top of <code>style.css</code>.
+          Replace the font names in the <code>@import url(…)</code> line and update the
+          <code>font-family</code> values in the element rules below.
+        </p>
+      </div>
+
+      <!-- ─── ADDING NEW SESSIONS ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">➕ Adding a New Session Page (e.g. Parent–Child Session)</p>
+        <ol class="guide-list">
+          <li>
+            <strong>Copy an existing session file.</strong> Use <code>bodypostures.html</code> as your starting
+            point for camera sessions, or <code>intonation.html</code> for microphone sessions.
+            Rename it (e.g. <code>parent-session.html</code>).
+          </li>
+          <li>
+            <strong>Edit the CHECKPOINTS array.</strong> Set your own <code>time</code> values to match
+            your video, update <code>name</code> and <code>instruction</code> fields.
+            Set an appropriate <code>evaluator</code> / <code>emotion</code> / <code>pattern</code>.
+          </li>
+          <li>
+            <strong>Change SESSION_TYPE.</strong> Set <code>const SESSION_TYPE = 'parent-session';</code>
+            (any unique string). Also update <code>const SESSION_KEY</code> to the same string.
+          </li>
+          <li>
+            <strong>Add the session type to server.js HistorySchema.</strong> In the History schema, find
+            <code>enum: ['bodypostures', 'facialexpression', 'intonation']</code> and add your new type.
+          </li>
+          <li>
+            <strong>Add a session card to dashboard.html.</strong> Inside the
+            <code>.mirror-grid</code> div, copy one of the three <code>&lt;a class="mirror-card"&gt;</code>
+            blocks, change the href to your new page, and update the icon, title, and description.
+          </li>
+          <li>
+            <strong>Add a video target option.</strong> In <code>dashboard.html</code> (admin upload
+            dropdown) and <code>admin.html</code> (File Management dropdown), add an
+            <code>&lt;option value="YourFileName"&gt;</code> entry.
+          </li>
+          <li>
+            <strong>Upload the video</strong> using the correct filename via File Management above.
+          </li>
+        </ol>
+      </div>
+
+      <!-- ─── SECURITY ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">🔒 Security — What's Protected and What to Watch Out For</p>
+        <table class="guide-table">
+          <tr><th>Protection</th><th>How it works</th></tr>
+          <tr><td>Passwords</td><td>Stored as bcrypt hashes (cost factor 12). The plain-text password is never stored anywhere.</td></tr>
+          <tr><td>Login tokens</td><td>JWT signed with JWT_SECRET, valid for 8 days. Stored in localStorage (remember-me) or sessionStorage (tab-only).</td></tr>
+          <tr><td>Admin routes</td><td>All <code>/admin/*</code> and <code>/health</code> routes check the JWT and verify <code>role === 'admin'</code> before responding.</td></tr>
+          <tr><td>File access</td><td>All files in <code>/files/</code> are served via an authenticated route. Users without a valid token cannot access them.</td></tr>
+          <tr><td>Path traversal</td><td>All filenames passed to the server are sanitised with <code>path.basename()</code> before being used in file operations. A user cannot read <code>../server/.env</code> by crafting a filename.</td></tr>
+          <tr><td>Input limits</td><td>Notes capped at 2000 characters. Display names capped at 60. Username validated to letters/numbers/underscore/hyphen only (2–30 chars).</td></tr>
+          <tr><td>XSS</td><td>All user-generated content rendered in innerHTML is passed through an <code>_esc()</code> function that escapes &amp;, &lt;, &gt;, and ".</td></tr>
+          <tr><td>Self-deletion</td><td>The admin account cannot delete itself via the Users panel.</td></tr>
+          <tr><td>Login rate limiting</td><td>Maximum 10 failed login attempts per IP address per 15 minutes. After that, the IP is locked out for the remainder of the window.</td></tr>
+          <tr><td>File access</td><td>The <code>/files/</code> directory is blocked from static serving. All file access goes through the authenticated <code>/files/:name</code> route.</td></tr>
+          <tr><td>Keep-alive endpoint</td><td><code>GET /ping</code> is public and returns <code>{ok:true}</code>. Use this with UptimeRobot to prevent Render cold starts. No sensitive data is exposed.</td></tr>
+        </table>
+        <p class="guide-text">
+          <strong>What you must do before going live:</strong> change JWT_SECRET and ADMIN_PASSWORD
+          in your environment variables. The defaults in <code>.env</code> are not safe for production.
+          Generate a strong JWT_SECRET: <code>node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"</code>
+        </p>
+        <p class="guide-text">
+          <strong>What to check periodically:</strong> the Registered Users list for unexpected accounts,
+          the Notes Inbox for unusual messages, and the health banner for server issues.
+        </p>
+      </div>
+
+      <!-- ─── MAINTENANCE ROUTINE ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">🔧 Routine Maintenance Checklist</p>
+        <table class="guide-table">
+          <tr><th>Frequency</th><th>Task</th></tr>
+          <tr><td>Every visit</td><td>Check the health banner at the top. Dismiss info notices; investigate red/amber banners.</td></tr>
+          <tr><td>Weekly</td><td>Check the Notes Inbox for new user messages and reply to them.</td></tr>
+          <tr><td>Weekly</td><td>Check User Session History to see how users are performing.</td></tr>
+          <tr><td>Monthly</td><td>Review Registered Users. Remove test accounts or inactive users if desired.</td></tr>
+          <tr><td>Monthly</td><td>Delete old polls and announcements that are no longer relevant.</td></tr>
+          <tr><td>Monthly</td><td>Check File Management — delete files that are no longer needed to keep storage usage low.</td></tr>
+          <tr><td>As needed</td><td>Update session videos by re-uploading with the same filename — the old file is overwritten.</td></tr>
+          <tr><td>As needed</td><td>Update checkpoint timings after re-editing your video (the timings must match the new video).</td></tr>
+          <tr><td>Before any code change</td><td>Run <code>node --check server/server.js</code> in the server directory to catch syntax errors before deploying.</td></tr>
+        </table>
+      </div>
+
+      <!-- ─── TROUBLESHOOTING ─── -->
+      <div class="guide-block">
+        <p class="guide-heading">🔍 Troubleshooting — Common Problems &amp; Fixes</p>
+        <table class="guide-table">
+          <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+          <tr><td>Users can't log in / "Server Error" on login</td><td>MongoDB is disconnected</td><td>Check health banner. Restart server. Check MongoDB Atlas cluster is running.</td></tr>
+          <tr><td>Page loads but shows no data</td><td>Server is sleeping (Render cold start)</td><td>Wait 20–30 seconds, then refresh. Dismiss the info banner.</td></tr>
+          <tr><td>Session video not playing</td><td>Video not uploaded, or wrong filename</td><td>Upload via File Management with the exact filename listed in the table above.</td></tr>
+          <tr><td>AI exercises not starting</td><td>Camera/mic permission denied, or CDN libraries failed</td><td>User must allow browser permissions. A yellow warning banner appears on the session page if CDN is unreachable.</td></tr>
+          <tr><td>Uploaded file not visible in library</td><td>Upload failed, or filename had invalid characters</td><td>Check the upload progress bar completed. Try again with a simpler filename (letters/numbers/underscore only).</td></tr>
+          <tr><td>User's granted file not showing</td><td>Filename in the grant field doesn't match exactly</td><td>Check Notes Inbox → the file hint shows available filenames. Make sure it matches exactly including extension.</td></tr>
+          <tr><td>Health banner shows "high memory"</td><td>Server has been running a long time with heavy load</td><td>Restart the server from the Render dashboard. Memory resets.</td></tr>
+          <tr><td>JWT errors / everyone getting logged out</td><td>JWT_SECRET was changed while users had active tokens</td><td>This is expected — all tokens signed with the old secret are invalid. Users just need to log in again.</td></tr>
+          <tr><td>Login says "Too many attempts"</td><td>IP-based rate limit hit (10 failures in 15 min)</td><td>Wait 15 minutes and try again. If it's you and you forgot your password, wait out the window.</td></tr>
+          <tr><td>Published files not showing on user dashboard</td><td>No files published yet, or user not in allowed list</td><td>Go to Publish File section. Check visibility is set correctly. For specific users, verify the correct user is ticked.</td></tr>
+          <tr><td>Report Error ⚠ button not visible</td><td>Page doesn't load auth-guard.js</td><td>The button only shows on pages that require login. It won't appear on index, login, or signup.</td></tr>
+          <tr><td>Admin account not created on startup</td><td>ADMIN_USERNAME, ADMIN_PASSWORD, or ADMIN_EMAIL missing from env</td><td>Add all three to environment variables and restart. The server will exit with an error message listing which are missing.</td></tr>
+        </table>
+      </div>
+
+      <p style="font-family:'Cinzel',serif;font-size:0.72rem;color:var(--text-dim);
+                letter-spacing:0.06em;text-align:center;margin-top:24px;padding-top:16px;
+                border-top:1px solid var(--wood-mid);">
+        TeenagerPlaybook v1.0.0 · Admin Guide · Keep this panel bookmarked
+      </p>
+
+    </div><!-- /adminGuideBody -->
+  </div><!-- /adminGuideSection -->
+
+
+</div>
+
+<!-- Confirm / Generic Popup -->
+<div class="popup-overlay hidden" id="msgPopup">
+  <div class="popup-box wood-panel">
+    <p class="popup-title" id="popupTitle">Notice</p>
+    <p class="popup-body" id="popupBody"></p>
+    <div class="popup-actions">
+      <button class="btn btn-secondary" onclick="closePopup()">Close</button>
+      <button class="btn btn-danger btn-sm" id="confirmBtn" style="display:none;"></button>
+    </div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+  let selectedFile = null;
+  let allHistory   = [];
+  let _notesFilter = ''; // filter notes inbox by account type
+
+  const sess        = getSession();
+  const token       = sess ? sess.token : '';
+  const authHeaders = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+  // ── Account type label helper (mirrors auth-guard.js ACCOUNT_TYPE_LABELS) ──
+  const TYPE_LABELS = { teenager:'🎓 Teenager', parent:'👨‍👩‍👧 Parent', teacher:'📚 Teacher', other:'✦ Scholar' };
+  function accountTypeLabel(type) { return TYPE_LABELS[type] || '✦ Scholar'; }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadNotesInbox();
+    loadVideoList();
+    loadPublishPanel();
+    loadPublishedList();
+    loadErrorReports();
+    loadAdminPolls();
+    loadAdminHistory();
+    loadUsers();
+    // Start server health monitor — polls every 60 seconds
+    checkServerHealth();
+    setInterval(checkServerHealth, 60000);
+
+    // Wire custom filename input preview
+    const cfEl = document.getElementById('customFilename');
+    if (cfEl) cfEl.addEventListener('input', () => {
+      const fn = cfEl.value.trim().replace(/\s+/g, '_');
+      const prev = document.getElementById('filenamePreview');
+      if (prev) prev.textContent = fn ? fn + '.<ext>' : '—';
+    });
+  });
+
+
+  // Simple HTML escaper for user content in innerHTML
+  function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // ─────────────────────────────
+  // NOTES INBOX
+  // ─────────────────────────────
+
+  async function loadNotesInbox() {
+    const inbox = document.getElementById('notesInbox');
+    try {
+      const res   = await adminFetch(API_BASE + '/admin/notes', { headers:{ 'Authorization':'Bearer '+token } });
+      if (!res) return;
+      const notes = await res.json();
+
+      if (!notes.length) {
+        inbox.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No user notes yet.</p>';
+        return;
+      }
+
+      inbox.innerHTML = '';
+      notes.forEach(note => {
+        const hasReply = note.adminReply && note.adminReply.trim();
+        const div = document.createElement('div');
+        div.className = `note-inbox-item${hasReply ? ' has-reply' : ' pending'}`;
+        div.id = 'note-' + note._id;
+        div.dataset.accountType = note.accountType || '';
+        // Apply current filter immediately
+        if (_notesFilter && note.accountType !== _notesFilter) div.style.display = 'none';
+
+        div.innerHTML = `
+          <div class="note-inbox-head">
+            <span class="note-inbox-user">👤 ${note.username}${note.accountType ? ` <span style="font-family:'Cinzel',serif;font-size:0.65rem;color:var(--gold-dim);border:1px solid var(--wood-mid);border-radius:10px;padding:1px 7px;margin-left:6px;vertical-align:middle;">${accountTypeLabel(note.accountType)}</span>` : ''}</span>
+            <span class="note-inbox-date">${new Date(note.createdAt).toLocaleString()}</span>
+            <span class="${hasReply ? 'replied-tag' : 'pending-tag'}">${hasReply ? 'REPLIED' : 'PENDING'}</span>
+          </div>
+          <p class="note-inbox-msg">${_esc(note.message)}</p>
+
+          <div class="note-reply-area">
+            <p class="reply-label">Your Reply</p>
+            <div class="form-group">
+              <textarea id="reply-${note._id}" style="min-height:70px;" placeholder="Write your reply…">${note.adminReply || ''}</textarea>
+            </div>
+
+            <p class="reply-label" style="margin-top:12px;">Grant a Personal Video (optional)</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.72rem;">File Name (from /files/ library)</label>
+                <input type="text" id="grant-file-${note._id}" placeholder="e.g. personal_alice.mp4 or guide_worksheet.pdf"
+                       value="${note.grantedFile && note.grantedFile.filename ? note.grantedFile.filename : ''}">
+                <p class="muted" style="font-size:0.7rem;margin-top:3px;" id="videoHint-${note._id}">Loading available files…</p>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:0.72rem;">Session Label</label>
+                <input type="text" id="grant-label-${note._id}" placeholder="e.g. Your Custom Posture Session"
+                       value="${note.grantedFile && note.grantedFile.label ? note.grantedFile.label : ''}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label style="font-size:0.72rem;">Short Description for User</label>
+              <input type="text" id="grant-desc-${note._id}" placeholder="e.g. Focused on open stance and eye contact"
+                     value="${note.grantedFile && note.grantedFile.description ? note.grantedFile.description : ''}">
+            </div>
+
+            <div class="flex gap-8" style="flex-wrap:wrap;margin-top:4px;">
+              <button class="btn btn-primary btn-sm" onclick="sendReply('${note._id}')">Send Reply</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteNote('${note._id}')">Delete Note</button>
+            </div>
+          </div>
+        `;
+        inbox.appendChild(div);
+      });
+      // Populate video hint labels with available filenames
+      try {
+        const vRes   = await adminFetch(API_BASE + '/admin/files', { headers:{ 'Authorization':'Bearer '+token } });
+        if (!vRes) return;
+        const videos = await vRes.json();
+        const hint   = videos.length ? '📁 Available: ' + videos.map(v=>v.name).join(', ') : 'No files uploaded yet';
+        notes.forEach(n => {
+          const hintEl = document.getElementById('videoHint-' + n._id);
+          if (hintEl) { hintEl.textContent = hint; hintEl.style.color = 'var(--gold-dim)'; }
+        });
+      } catch(e) {}
+    } catch(e) {
+      inbox.innerHTML = '<p class="muted" style="font-size:0.85rem;">Could not load notes.</p>';
+    }
+  }
+
+  async function sendReply(noteId) {
+    const adminReply  = document.getElementById('reply-' + noteId).value.trim();
+    const grantFile   = document.getElementById('grant-file-'  + noteId).value.trim();
+    const grantLabel  = document.getElementById('grant-label-' + noteId).value.trim();
+    const grantDesc   = document.getElementById('grant-desc-'  + noteId).value.trim();
+
+    if (!adminReply) return showToast('Please write a reply before sending.');
+
+    const body = { adminReply };
+    if (grantFile) {
+      body.grantedFile  = { filename: grantFile, label: grantLabel || 'Personal Session', description: grantDesc };
+    }
+
+    try {
+      const res = await adminFetch(API_BASE + `/admin/notes/${noteId}/reply`, {
+        method:  'PATCH',
+        headers: authHeaders,
+        body:    JSON.stringify(body)
+      });
+      if (!res) return;
+      if (res.ok) {
+        showToast('Reply sent to user. ✦');
+        loadNotesInbox();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        // Fix 4: show exact server error (e.g. "file does not exist")
+        showPopup('Could Not Send Reply', data.msg || 'An error occurred. Please try again.', 'error');
+      }
+    } catch(e) { showToast('Server error.'); }
+  }
+
+  async function deleteNote(noteId) {
+    showConfirmPopup('Delete Note', 'Delete this note and reply permanently?', async () => {
+      const r1 = await adminFetch(API_BASE + '/admin/notes/' + noteId, { method:'DELETE', headers:{ 'Authorization':'Bearer '+token } });
+      if (r1) { showToast('Note deleted.'); loadNotesInbox(); }
+    });
+  }
+
+  function filterNotes(type) {
+    _notesFilter = type;
+    // Update active chips in notes section only (first filter-chip group)
+    document.querySelectorAll('[onclick^="filterNotes"]').forEach(function(c) {
+      var m = c.getAttribute('onclick').match(/filterNotes\('([^']*)'\)/);
+      c.classList.toggle('active', m && m[1] === type);
+    });
+    // Show/hide notes
+    const inbox = document.getElementById('notesInbox');
+    inbox.querySelectorAll('.note-inbox-item').forEach(item => {
+      const t = item.dataset.accountType || '';
+      item.style.display = (!type || t === type) ? '' : 'none';
+    });
+  }
+
+  // ─────────────────────────────
+  // VIDEO MANAGEMENT
+  // ─────────────────────────────
+
+  function handleTargetChange() {
+    const val  = document.getElementById('videoTarget').value;
+    const wrap = document.getElementById('customFilenameWrap');
+    if (val === 'custom') { wrap.classList.remove('hidden'); }
+    else                  { wrap.classList.add('hidden'); }
+  }
+
+  function getTargetName() {
+    const val = document.getElementById('videoTarget').value;
+    if (val === 'custom') {
+      const fn = document.getElementById('customFilename').value.trim().replace(/\s+/g,'_');
+      return fn || 'CustomVideo';
+    }
+    return val;
+  }
+
+  function onFileSelect(e) {
+    selectedFile = e.target.files[0];
+    document.getElementById('selectedFileName').textContent = selectedFile ? selectedFile.name : 'No file selected';
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.remove('drag-over');
+    selectedFile = e.dataTransfer.files[0];
+    document.getElementById('selectedFileName').textContent = selectedFile ? selectedFile.name : 'No file selected';
+  }
+
+  async function uploadVideo() {
+    if (!selectedFile) return showToast('Please select a video file first.');
+    const target = getTargetName();
+    const form   = new FormData();
+    form.append('video', selectedFile);
+    form.append('target', target);
+
+    const bar = document.getElementById('uploadProgress');
+    bar.style.width = '15%';
+
+    try {
+      const res  = await adminFetch(API_BASE + '/admin/upload-file', { method:'POST', body: form });
+      bar.style.width = '100%';
+      if (!res) { bar.style.width = '0%'; showToast('Upload failed — check your connection.'); return; }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(`"${data.filename}" uploaded successfully! ✦`);
+        loadVideoList();
+        loadPublishPanel(); // refresh publish dropdown with new file
+      } else {
+        showPopup('Upload Failed', data.msg || 'Upload failed.', 'error');
+      }
+      setTimeout(() => { bar.style.width = '0%'; }, 1500);
+    } catch(e) {
+      showPopup('Error', 'Could not upload. Ensure server is running.', 'error');
+      bar.style.width = '0%';
+    }
+  }
+
+  async function loadVideoList() {
+    const container = document.getElementById('videoList');
+    try {
+      const res  = await adminFetch(API_BASE + '/admin/files', { headers:{ 'Authorization':'Bearer '+token } });
+      if (!res) return;
+      const data = await res.json();
+      if (!data.length) { container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No videos uploaded yet.</p>'; return; }
+      container.innerHTML = data.map(v => `
+        <div class="file-list-item">
+          <span class="file-list-name">${{video:"🎬",audio:"🎵",pdf:"📄",image:"🖼️",document:"📝",other:"📎"}[(() => { const e = ('.' + v.name.split('.').pop()).toLowerCase(); return [".mp4",".webm",".mov"].includes(e)?'video':[".mp3",".wav",".ogg",".m4a"].includes(e)?'audio':e==='.pdf'?'pdf':[".jpg",".jpeg",".png",".gif",".webp"].includes(e)?'image':[".doc",".docx",".ppt",".pptx",".xls",".xlsx"].includes(e)?'document':'other'; })()] || '📎'} ${v.name}</span>
+          <span class="file-list-size">${v.size}</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteVideo('${v.name}')">Delete</button>
+        </div>
+      `).join('');
+    } catch(e) { container.innerHTML = '<p class="muted" style="font-size:0.85rem;">Could not load video list.</p>'; }
+  }
+
+  function deleteVideo(name) {
+    showConfirmPopup('Delete File', `Delete "${name}"? This cannot be undone.`, async () => {
+      const r4 = await adminFetch(API_BASE + '/admin/files/' + encodeURIComponent(name), { method:'DELETE', headers:{ 'Authorization':'Bearer '+token } });
+      if (r4) { showToast('File deleted.'); loadVideoList(); }
+    });
+  }
+
+  // ─────────────────────────────
+  // POLLS & ANNOUNCEMENTS
+  // ─────────────────────────────
+
+  function addOption() {
+    const list  = document.getElementById('optionsList');
+    const count = list.querySelectorAll('.poll-option-input').length + 1;
+    const div   = document.createElement('div');
+    div.className = 'form-group';
+    div.innerHTML = `<input type="text" class="poll-option-input" placeholder="Option ${count}">`;
+    list.appendChild(div);
+  }
+
+  async function createPoll() {
+    const question = document.getElementById('pollQuestion').value.trim();
+    const options  = [...document.querySelectorAll('.poll-option-input')].map(i=>i.value.trim()).filter(Boolean);
+    if (!question) return showToast('Please enter a question.');
+    if (options.length < 2) return showToast('Add at least 2 options for a poll.');
+
+    try {
+      const res = await adminFetch(API_BASE + '/polls', {
+        method:  'POST',
+        headers: authHeaders,
+        body:    JSON.stringify({ question, options: options.map(t=>({ text:t })) })
+      });
+      if (res && res.ok) {
+        showToast('Poll published to dashboard! ✦');
+        document.getElementById('pollQuestion').value = '';
+        document.querySelectorAll('.poll-option-input').forEach(i => i.value='');
+        loadAdminPolls();
+      }
+    } catch(e) { showToast('Could not publish.'); }
+  }
+
+  async function createAnnouncement() {
+    const question = document.getElementById('pollQuestion').value.trim();
+    if (!question) return showToast('Please enter the announcement text.');
+    try {
+      const res = await adminFetch(API_BASE + '/polls', {
+        method:  'POST',
+        headers: authHeaders,
+        body:    JSON.stringify({ question, options: [], isAnnouncement: true })
+      });
+      if (res && res.ok) {
+        showToast('Announcement published! ✦');
+        document.getElementById('pollQuestion').value = '';
+        loadAdminPolls();
+      }
+    } catch(e) { showToast('Could not publish.'); }
+  }
+
+  async function loadAdminPolls() {
+    const container = document.getElementById('adminPollList');
+    try {
+      const res   = await adminFetch(API_BASE + '/polls', { headers:{ 'Authorization':'Bearer '+token } });
+      if (!res) return;
+      const polls = await res.json();
+      if (!polls.length) { container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No polls yet.</p>'; return; }
+      container.innerHTML = polls.map(p => `
+        <div class="wood-panel" style="padding:14px 18px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+            <div style="flex:1;">
+              <p style="font-family:'Cinzel',serif;font-size:0.85rem;color:var(--gold);margin-bottom:6px;">
+                ${p.isAnnouncement ? '📌 ' : '📊 '}${p.question}
+              </p>
+              ${p.options.map(o => `
+                <p class="muted" style="font-size:0.8rem;margin-bottom:3px;">
+                  • ${o.text} — <strong style="color:var(--wood-honey);">${o.votes}</strong> vote(s)
+                  ${p.isAnnouncement ? '' : `<span style="color:var(--text-dim);font-size:0.72rem;">[voters: ${(o.voters||[]).join(', ') || 'none'}]</span>`}
+                </p>`).join('')}
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="deletePoll('${p._id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    } catch(e) { container.innerHTML = '<p class="muted" style="font-size:0.85rem;">Could not load.</p>'; }
+  }
+
+  async function deletePoll(id) {
+    showConfirmPopup('Delete', 'Delete this poll/announcement?', async () => {
+      const r3 = await adminFetch(API_BASE + '/polls/' + id, { method:'DELETE', headers:{ 'Authorization':'Bearer '+token } });
+      if (r3) { showToast('Deleted.'); loadAdminPolls(); }
+    });
+  }
+
+  // ─────────────────────────────
+  // HISTORY & USERS
+  // ─────────────────────────────
+
+  async function loadAdminHistory() {
+    const container = document.getElementById('adminHistoryList');
+    try {
+      const res  = await adminFetch(API_BASE + '/admin/history', { headers:{ 'Authorization':'Bearer '+token } });
+      if (!res) return;
+      allHistory = await res.json();
+      renderHistory(allHistory);
+    } catch(e) { container.innerHTML = '<p class="muted" style="font-size:0.85rem;">Could not load.</p>'; }
+  }
+
+  function renderHistory(data) {
+    const container = document.getElementById('adminHistoryList');
+    if (!data.length) { container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No history yet.</p>'; return; }
+    const typeLabels = { bodypostures:'🧍 Body Postures', facialexpression:'😊 Facial', intonation:'🎙️ Intonation' };
+    container.innerHTML = data.map(e => `
+      <div class="file-list-item" style="flex-wrap:wrap;">
+        <span class="file-list-name" style="font-family:'Cinzel',serif;color:var(--text-muted);">${e.username||'Unknown'}</span>
+        <span style="font-size:0.8rem;color:var(--wood-honey);">${typeLabels[e.type]||e.type}</span>
+        <span style="font-size:0.8rem;color:${e.passed?'#60c060':'#c06060'};">${e.accuracy}% — ${e.passed?'PASS':'FAIL'}</span>
+        <span class="file-list-size">${new Date(e.timestamp||e.createdAt).toLocaleDateString()}</span>
+      </div>`).join('');
+  }
+
+  function filterHistory() {
+    const q = document.getElementById('userFilter').value.trim().toLowerCase();
+    renderHistory(q ? allHistory.filter(e=>(e.username||'').toLowerCase().includes(q)) : allHistory);
+  }
+
+  async function loadUsers() {
+    const container = document.getElementById('userList');
+    try {
+      const res   = await adminFetch(API_BASE + '/admin/users', { headers:{ 'Authorization':'Bearer '+token } });
+      if (!res) return;
+      const users = await res.json();
+      if (!users.length) { container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No users yet.</p>'; return; }
+      container.innerHTML = users.map(u => `
+        <div class="file-list-item" data-account-type="${u.accountType || 'teenager'}" style="flex-wrap:wrap;gap:8px;">
+          <span class="file-list-name">👤 ${u.username}${u.displayName && u.displayName !== u.username ? ` <span style="color:var(--text-dim);font-size:0.8rem;">(${u.displayName})</span>` : ''}</span>
+          <span style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--gold-dim);border:1px solid var(--wood-mid);border-radius:10px;padding:2px 8px;">${accountTypeLabel(u.accountType || 'teenager')}</span>
+          <span style="font-size:0.75rem;color:var(--text-dim);">${u.email}</span>
+          ${u.ageGroup ? `<span style="font-size:0.72rem;color:var(--text-dim);">Age: ${u.ageGroup}</span>` : ''}
+          ${u.profileDetails && u.profileDetails.institution ? `<span style="font-size:0.72rem;color:var(--text-dim);">🏫 ${u.profileDetails.institution}</span>` : ''}
+          <span style="font-family:'Cinzel',serif;font-size:0.72rem;color:${u.role==='admin'?'var(--gold)':'var(--text-dim)'};">${u.role.toUpperCase()}</span>
+          ${u.profileDetails && u.profileDetails.goals ? `<p style="width:100%;font-size:0.78rem;color:var(--text-dim);font-style:italic;margin-top:2px;">Goals: ${u.profileDetails.goals}</p>` : ''}
+          ${u.role!=='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteUser('${u._id}','${u.username}')">Remove</button>`:''}
+        </div>`).join('');
+    } catch(e) { container.innerHTML = '<p class="muted" style="font-size:0.85rem;">Could not load.</p>'; }
+  }
+
+  async function deleteUser(id, name) {
+    showConfirmPopup('Remove User', `Remove "${name}" and all their data?`, async () => {
+      const r2 = await adminFetch(API_BASE + '/admin/users/' + id, { method:'DELETE', headers:{ 'Authorization':'Bearer '+token } });
+      if (r2) { showToast('User removed.'); loadUsers(); loadAdminHistory(); }
+    });
+  }
+
+  function filterUsers(type) {
+    document.querySelectorAll('#userList .file-list-item').forEach(item => {
+      const t = item.dataset.accountType || '';
+      item.style.display = (!type || t === type) ? '' : 'none';
+    });
+    // Update active chip in user section
+    document.querySelectorAll('.filter-chip').forEach(c => {
+      const m = c.getAttribute('onclick')?.match(/filterUsers\('([^']*)'\)/);
+      if (m) c.classList.toggle('active', m[1] === type);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SERVER HEALTH MONITOR
+  // Polls /health every 60 s. Shows a persistent banner for warnings
+  // and a blocking popup for critical failures.
+  // To add a new check: add a warnings.push() in server.js /health route.
+  // ═══════════════════════════════════════════════════════════════
+
+  let _healthDismissed = {};   // { [warningMsg]: true } — user-dismissed warnings
+
+  async function checkServerHealth() {
+    const banner = document.getElementById('healthBanner');
+    if (!banner) return;
+
+    // adminFetch handles network errors (returns null) and 401 (redirects)
+    const res = await adminFetch(API_BASE + '/health');
+
+    if (!res) {
+      // Network error or session expired — show unreachable warning
+      _showHealthBanner([{
+        level: 'critical',
+        msg: 'Cannot reach the server. It may be sleeping (free-tier cold start), down, or require payment to resume. Check your hosting dashboard.'
+      }]);
+      return;
+    }
+
+    let data;
+    try { data = await res.json(); }
+    catch (_) { _showHealthBanner([{ level: 'warning', msg: 'Health check returned an unreadable response.' }]); return; }
+
+    // Filter out already-dismissed informational warnings
+    const active = (data.warnings || []).filter(w =>
+      w.level === 'critical' || !_healthDismissed[w.msg]
+    );
+
+    if (!active.length) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    _showHealthBanner(active, data);
+
+    // Show a blocking popup for any critical issue (once per page load)
+    const criticals = active.filter(w => w.level === 'critical');
+    if (criticals.length && !window._healthCriticalShown) {
+      window._healthCriticalShown = true;
+      showPopup(
+        '⚠ Server Issue Detected',
+        criticals.map(w => w.msg).join('\n\n'),
+        'error'
+      );
+    }
+  }
+
+  function _showHealthBanner(warnings, data) {
+    const banner = document.getElementById('healthBanner');
+    if (!banner) return;
+
+    const hasCritical = warnings.some(w => w.level === 'critical');
+    const bgColor = hasCritical
+      ? 'rgba(120,30,15,0.85)'
+      : 'rgba(80,55,10,0.85)';
+    const borderColor = hasCritical ? 'rgba(220,80,50,0.6)' : 'rgba(200,160,40,0.5)';
+    const icon = hasCritical ? '🔴' : '⚠️';
+
+    const rows = warnings.map(w => {
+      const canDismiss = w.level !== 'critical';
+      const safeMsg = w.msg.replace(/</g,'&lt;');
+      return `
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:6px 0;
+                    border-bottom:1px solid rgba(255,255,255,0.06);">
+          <span style="flex-shrink:0;font-size:0.9rem;">
+            ${w.level==='critical'?'🔴':w.level==='warning'?'⚠️':'ℹ️'}
+          </span>
+          <span style="flex:1;font-family:'Libre Baskerville',serif;font-size:0.82rem;
+                       color:#f0d090;line-height:1.55;">${safeMsg}</span>
+          ${canDismiss ? `<button
+              onclick="_dismissHealthWarning('${w.msg.replace(/'/g,"\\'")}')"
+              style="flex-shrink:0;background:none;border:none;color:rgba(255,255,255,0.4);
+                     font-size:0.8rem;cursor:pointer;padding:0 4px;">✕</button>` : ''}
+        </div>`;
+    }).join('');
+
+    const uptimeStr = data ? ` · Uptime: ${data.uptimeHuman}` : '';
+    const memStr    = data && data.memory ? ` · Heap: ${data.memory.heapMB} MB` : '';
+    const dbStr     = data && data.database ? ` · DB: ${data.database.status}` : '';
+
+    banner.style.cssText = [
+      `display:block`, `position:sticky`, `top:0`, `z-index:8000`,
+      `background:${bgColor}`,
+      `border-bottom:2px solid ${borderColor}`,
+      `padding:10px 24px`,
+      `backdrop-filter:blur(4px)`,
+    ].join(';');
+
+    banner.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;
+                  margin-bottom:6px;flex-wrap:wrap;gap:6px;">
+        <p style="font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.07em;
+                  color:#f0c060;margin:0;">${icon} SERVER HEALTH ALERT</p>
+        <p style="font-family:'Libre Baskerville',serif;font-size:0.72rem;
+                  color:rgba(255,255,255,0.4);margin:0;">${new Date().toLocaleTimeString()}${uptimeStr}${memStr}${dbStr}</p>
+      </div>
+      ${rows}`;
+  }
+
+  function _dismissHealthWarning(msg) {
+    _healthDismissed[msg] = true;
+    checkServerHealth(); // re-render without the dismissed warning
+  }
+
+  // ─────────────────────────────
+  // HELPERS
+  // ─────────────────────────────
+
+  function showConfirmPopup(title, msg, onConfirm) {
+    document.getElementById('popupTitle').textContent = title;
+    document.getElementById('popupBody').textContent  = msg;
+    document.getElementById('popupBody').className    = 'popup-body warning';
+    const btn = document.getElementById('confirmBtn');
+    btn.textContent   = 'Confirm';
+    btn.style.display = 'inline-flex';
+    btn.onclick       = () => { closePopup(); onConfirm(); };
+    document.getElementById('msgPopup').classList.remove('hidden');
+  }
+
+  // Fix 4: showPopup / closePopup / showToast defined locally in admin
+  // (auth-guard.js versions require DOM elements that may not exist here)
+  function showPopup(title, msg, type) {
+    document.getElementById('popupTitle').textContent = title;
+    const body = document.getElementById('popupBody');
+    body.textContent = msg;
+    body.className   = 'popup-body ' + (type || '');
+    document.getElementById('confirmBtn').style.display = 'none';
+    document.getElementById('msgPopup').classList.remove('hidden');
+  }
+
+  function closePopup() {
+    document.getElementById('msgPopup').classList.add('hidden');
+  }
+
+  function showToast(msg, duration) {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.remove('hidden');
+    clearTimeout(window._adminToast);
+    window._adminToast = setTimeout(() => t.classList.add('hidden'), duration || 3500);
+  }
+
+  // Fix 5: authFetch wrapper for admin — handles JWT expiry
+  async function adminFetch(url, options) {
+    const opts = Object.assign({}, options || {});
+    opts.headers = Object.assign({}, opts.headers || {}, { 'Authorization': 'Bearer ' + token });
+    try {
+      const res = await fetch(url, opts);
+      if (res.status === 401) {
+        showPopup('Session Expired', 'Your admin session has expired. Please sign in again.', 'error');
+        setTimeout(function () { window.location.replace('login.html'); }, 2500);
+        return null;
+      }
+      return res;
+    } catch (_) {
+      showToast('Network error — check your connection.');
+      return null;
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // PUBLISH FILE
+  // ════════════════════════════════════════════════════════════
+
+  let _pubAllUsers = []; // cached user list for picker
+
+  async function loadPublishPanel() {
+    // Populate file selector
+    const sel = document.getElementById('pubFilename');
+    if (!sel) return;
+    const res = await adminFetch(API_BASE + '/admin/files');
+    if (!res) return;
+    const files = await res.json();
+    sel.innerHTML = '<option value="">— select a file —</option>' +
+      files.map(f => `<option value="${_esc(f.name)}">${_esc(f.name)} (${f.size})</option>`).join('');
+
+    // Pre-load users for picker
+    const ures = await adminFetch(API_BASE + '/admin/users');
+    if (!ures) return;
+    _pubAllUsers = await ures.json();
+    renderUserPicker();
+  }
+
+  function renderUserPicker() {
+    const picker = document.getElementById('pubUserPicker');
+    if (!picker) return;
+    const nonAdmins = _pubAllUsers.filter(u => u.role !== 'admin');
+    if (!nonAdmins.length) {
+      picker.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.82rem;padding:4px 0;">No registered users yet.</p>';
+      return;
+    }
+    picker.innerHTML = nonAdmins
+      .map(u => `
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;
+                      border-bottom:1px solid rgba(74,46,26,0.2);">
+          <input type="checkbox" class="pub-user-check" value="${u._id}"
+                 style="accent-color:var(--gold);width:15px;height:15px;">
+          <span style="font-family:'Cinzel',serif;font-size:0.78rem;color:var(--text-muted);">
+            ${_esc(u.username)}
+            ${u.displayName && u.displayName !== u.username ? `<span style="color:var(--text-dim);"> (${_esc(u.displayName)})</span>` : ''}
+            <span style="color:var(--text-dim);font-size:0.68rem;margin-left:6px;">${_esc(u.accountType||'')}</span>
+          </span>
+        </label>`).join('');
+  }
+
+  function pubToggleUserPicker(val) {
+    const wrap = document.getElementById('pubUserPickerWrap');
+    if (wrap) wrap.style.display = val === 'specific' ? 'block' : 'none';
+  }
+
+  async function publishFile() {
+    const filename   = document.getElementById('pubFilename').value;
+    const label      = document.getElementById('pubLabel').value.trim();
+    const desc       = document.getElementById('pubDesc').value.trim();
+    const visibility = document.querySelector('input[name="pubVisibility"]:checked')?.value || 'everyone';
+
+    if (!filename) return showToast('Select a file from the dropdown first.');
+    if (!label)    return showToast('Please enter a label for users to see.');
+
+    let allowedUserIds = [];
+    if (visibility === 'specific') {
+      allowedUserIds = [...document.querySelectorAll('.pub-user-check:checked')].map(c => c.value);
+      if (!allowedUserIds.length) return showToast('Select at least one user for specific visibility.');
+    }
+
+    const res = await adminFetch(API_BASE + '/admin/publish-file', {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ filename, label, description: desc, visibility, allowedUserIds }),
+    });
+    if (!res) return;
+    if (res.ok) {
+      showToast('File published! ✦');
+      document.getElementById('pubLabel').value = '';
+      document.getElementById('pubDesc').value  = '';
+      document.querySelectorAll('.pub-user-check').forEach(c => c.checked = false);
+      loadPublishedList();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      showPopup('Publish Failed', d.msg || 'Could not publish.', 'error');
+    }
+  }
+
+  async function loadPublishedList() {
+    const container = document.getElementById('publishedList');
+    if (!container) return;
+    const res = await adminFetch(API_BASE + '/admin/published-files');
+    if (!res) return;
+    const files = await res.json();
+    if (!files.length) {
+      container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No files published yet.</p>';
+      return;
+    }
+    container.innerHTML = files.map(pf => {
+      const who = pf.visibility === 'everyone'
+        ? '<span style="color:#60c060;font-size:0.72rem;">🌐 Everyone</span>'
+        : `<span style="color:#c0a040;font-size:0.72rem;">🔒 ${(pf.allowedUsers||[]).map(u=>_esc(u.username||u)).join(', ')||'nobody'}</span>`;
+      return `
+        <div class="file-list-item" style="flex-wrap:wrap;gap:8px;align-items:flex-start;">
+          <div style="flex:1;min-width:200px;">
+            <span class="file-list-name" style="display:block;margin-bottom:3px;">📄 ${_esc(pf.label)}</span>
+            <span style="font-size:0.72rem;color:var(--text-dim);">${_esc(pf.filename)}</span>
+            ${pf.description ? `<p style="font-size:0.75rem;color:var(--text-dim);margin-top:3px;font-style:italic;">${_esc(pf.description)}</p>` : ''}
+          </div>
+          ${who}
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-secondary btn-sm" onclick="unpublishFile('${pf._id}')">Unpublish</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function unpublishFile(id) {
+    showConfirmPopup('Unpublish File', 'Remove this file from users\' dashboards? The file itself is not deleted.', async () => {
+      const r = await adminFetch(API_BASE + '/admin/published-files/' + id, { method: 'DELETE' });
+      if (r) { showToast('File unpublished.'); loadPublishedList(); }
+    });
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // ERROR REPORTS
+  // ════════════════════════════════════════════════════════════
+
+  async function loadErrorReports() {
+    const container = document.getElementById('errorReportsList');
+    if (!container) return;
+    const res = await adminFetch(API_BASE + '/admin/error-reports');
+    if (!res) return;
+    const reports = await res.json();
+    if (!reports.length) {
+      container.innerHTML = '<p class="muted" style="font-style:italic;font-size:0.85rem;">No error reports yet.</p>';
+      return;
+    }
+    container.innerHTML = reports.map(r => `
+      <div class="note-inbox-item${r.resolved ? '' : ' pending'}" style="margin-bottom:10px;">
+        <div class="note-inbox-head">
+          <span class="note-inbox-user">👤 ${_esc(r.username)}
+            <span style="font-size:0.7rem;color:var(--text-dim);margin-left:8px;">${_esc(r.page||'unknown page')}</span>
+          </span>
+          <span class="note-inbox-date">${new Date(r.createdAt).toLocaleString()}</span>
+          <span class="${r.resolved ? 'replied-tag' : 'pending-tag'}">${r.resolved ? 'RESOLVED' : 'OPEN'}</span>
+        </div>
+        <p class="note-inbox-msg">${_esc(r.description)}</p>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          ${!r.resolved ? `<button class="btn btn-secondary btn-sm" onclick="resolveReport('${r._id}', this)">Mark Resolved</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="deleteReport('${r._id}', this)">Delete</button>
+        </div>
+      </div>`).join('');
+  }
+
+  async function resolveReport(id, btn) {
+    const r = await adminFetch(API_BASE + '/admin/error-reports/' + id + '/resolve', {
+      method: 'PATCH', headers: authHeaders, body: '{}'
+    });
+    if (r) { showToast('Marked resolved.'); loadErrorReports(); }
+  }
+
+  async function deleteReport(id, btn) {
+    showConfirmPopup('Delete Report', 'Delete this error report permanently?', async () => {
+      const r = await adminFetch(API_BASE + '/admin/error-reports/' + id, { method: 'DELETE' });
+      if (r) { showToast('Report deleted.'); loadErrorReports(); }
+    });
+  }
+
+
+  function toggleGuide() {
+    var body = document.getElementById('adminGuideBody');
+    var icon = document.getElementById('guideToggleIcon');
+    var open = body.style.display === 'none' || body.style.display === '';
+    body.style.display = open ? 'block' : 'none';
+    icon.textContent   = open ? 'HIDE ▴' : 'SHOW ▾';
+  }
+</script>
+</body>
+</html>

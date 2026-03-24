@@ -1,0 +1,17 @@
+# Secrets — never commit these
+server/.env
+
+# Uploaded files — too large for Git, re-upload via admin panel after deploy
+files/
+videos/
+
+# Node dependencies — install with npm install
+node_modules/
+server/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
