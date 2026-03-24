@@ -341,20 +341,22 @@
     btn.textContent = 'Creating account…';
 
     try {
-      var res = await fetch('/signup', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          email,
-          username,
-          password,
-          accountType:    role,
-          displayName,
-          ageGroup:       ctx.ageGroup,
-          profileDetails: { institution: ctx.institution, goals: ctx.goals },
-        }),
-      });
-      var data = await res.json();
+  // Use the full Render URL instead of just '/signup'
+  var res = await fetch('https://teenagerplaybook-1-0-0.onrender.com/signup', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      email,
+      username,
+      password,
+      accountType:    role,
+      displayName,
+      ageGroup:       ctx.ageGroup,
+      profileDetails: { institution: ctx.institution, goals: ctx.goals },
+    }),
+  });
+  
+  var data = await res.json();
 
       if (res.ok) {
         showPopup('Account Created!', 'Redirecting you to sign in…', 'success');

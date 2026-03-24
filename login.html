@@ -92,12 +92,11 @@
     btn.disabled    = true;
     btn.textContent = 'Signing in…';
 
-    try {
-      const res  = await fetch('/login', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ username, password }),
-      });
+   const res = await fetch('https://teenagerplaybook-1-0-0.onrender.com/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ username, password }),
+});
       const data = await res.json();
 
       if (res.ok) {
