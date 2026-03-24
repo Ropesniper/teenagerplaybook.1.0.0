@@ -91,7 +91,7 @@
     const btn = document.getElementById('loginBtn');
     btn.disabled    = true;
     btn.textContent = 'Signing in…';
-
+try {
    const res = await fetch('https://teenagerplaybook-1-0-0.onrender.com/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
@@ -107,7 +107,8 @@
         btn.disabled    = false;
         btn.textContent = 'Enter the Archive';
       }
-    } catch (_) {
+    } 
+catch (_) {
       showPopup('Cannot Reach Server', 'Check your internet connection or try again shortly.', 'error');
       btn.disabled    = false;
       btn.textContent = 'Enter the Archive';
