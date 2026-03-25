@@ -1108,3 +1108,18 @@ video {
   margin-bottom: 6px;
   padding-left: 4px;
 }
+
+function togglePlay() {
+  const video = document.getElementById('DashboardVideo');
+  const overlay = document.getElementById('playOverlay');
+  
+  if (video.paused) {
+    video.play();
+    overlay.style.opacity = '0';
+    overlay.style.pointerEvents = 'none'; // Hide overlay so it doesn't block clicks while playing
+  } else {
+    video.pause();
+    overlay.style.opacity = '1';
+    overlay.style.pointerEvents = 'auto'; // Show overlay and allow clicking to resume
+  }
+}
