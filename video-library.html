@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Library — TeenagerPlaybook</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* YouTube-like Video Player Styles */
+    .video-library-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .video-library-header {
+      margin-bottom: 40px;
+      text-align: center;
+    }
+
+    .video-library-header h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 2.5rem;
+      color: var(--gold);
+      margin-bottom: 10px;
+      letter-spacing: 0.05em;
+    }
+
+    .video-library-header p {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 1rem;
+      color: var(--text-muted);
+    }
+
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+      margin-bottom: 60px;
+    }
+
+    .video-card {
+      background: rgba(20, 10, 4, 0.5);
+      border: 1px solid var(--wood-mid);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .video-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--gold-dim);
+      box-shadow: 0 8px 24px rgba(180, 130, 40, 0.15);
+    }
+
+    .video-thumbnail {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%; /* 16:9 aspect ratio */
+      background: #000;
+      overflow: hidden;
+    }
+
+    .video-thumbnail img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .video-duration {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .play-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60px;
+      height: 60px;
+      background: rgba(180, 130, 40, 0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .video-card:hover .play-overlay {
+      opacity: 1;
+    }
+
+    .play-overlay::before {
+      content: '';
+      width: 0;
+      height: 0;
+      border-left: 18px solid #fff;
+      border-top: 12px solid transparent;
+      border-bottom: 12px solid transparent;
+      margin-left: 4px;
+    }
+
+    .video-info {
+      padding: 16px;
+    }
+
+    .video-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1rem;
+      color: var(--text-main);
+      margin-bottom: 6px;
+      font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.4;
+    }
+
+    .video-meta {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .video-meta-dot {
+      width: 3px;
+      height: 3px;
+      background: var(--text-dim);
+      border-radius: 50%;
+    }
+
+    /* YouTube-like Video Player Modal */
+    .video-player-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 10000;
+      overflow-y: auto;
+    }
+
+    .video-player-modal.active {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 60px 20px 40px;
+    }
+
+    .video-player-content {
+      max-width: 1280px;
+      width: 100%;
+    }
+
+    .video-player-wrapper {
+      position: relative;
+      width: 100%;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .native-video-player {
+      width: 100%;
+      display: block;
+      background: #000;
+      outline: none;
+    }
+
+    /* Custom Controls (enhanced native controls) */
+    .native-video-player::-webkit-media-controls-panel {
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    }
+
+    .video-details {
+      background: rgba(20, 10, 4, 0.8);
+      border: 1px solid var(--wood-mid);
+      border-radius: 8px;
+      padding: 24px;
+      margin-top: 16px;
+    }
+
+    .video-details-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.5rem;
+      color: var(--gold);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .video-details-description {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+
+    .video-details-meta {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .close-player-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: rgba(180, 130, 40, 0.9);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.2s;
+      z-index: 10001;
+    }
+
+    .close-player-btn:hover {
+      background: var(--gold);
+      transform: rotate(90deg);
+    }
+
+    .close-player-btn::before,
+    .close-player-btn::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 2px;
+      background: #fff;
+    }
+
+    .close-player-btn::before {
+      transform: rotate(45deg);
+    }
+
+    .close-player-btn::after {
+      transform: rotate(-45deg);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      color: var(--wood-mid);
+      margin-bottom: 20px;
+    }
+
+    .empty-state h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.5rem;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .empty-state p {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.95rem;
+      color: var(--text-dim);
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(180, 130, 40, 0.2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Keyboard shortcut hints */
+    .keyboard-hints {
+      background: rgba(20, 10, 4, 0.8);
+      border: 1px solid var(--wood-mid);
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 16px;
+    }
+
+    .keyboard-hints h3 {
+      font-family: 'Cinzel', serif;
+      font-size: 1rem;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+
+    .keyboard-hint-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 8px;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .keyboard-hint {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .keyboard-key {
+      background: rgba(180, 130, 40, 0.2);
+      border: 1px solid var(--gold-dim);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--gold);
+      min-width: 30px;
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .video-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+      }
+
+      .video-library-header h1 {
+        font-size: 2rem;
+      }
+
+      .video-player-modal.active {
+        padding: 20px 10px;
+      }
+
+      .video-details {
+        padding: 16px;
+      }
+
+      .keyboard-hints {
+        display: none; /* Hide on mobile */
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav style="background: rgba(20,10,4,0.95); border-bottom: 1px solid var(--wood-mid); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000;">
+    <a href="dashboard.html" style="font-family: 'Cinzel', serif; color: var(--gold); text-decoration: none; font-size: 1.2rem; letter-spacing: 0.05em;">← Back to Dashboard</a>
+    <span id="userDisplay" style="font-family: 'Libre Baskerville', serif; color: var(--text-muted); font-size: 0.9rem;"></span>
+  </nav>
+
+  <div class="video-library-container">
+    <div class="video-library-header">
+      <h1>📹 Video Library</h1>
+      <p>Watch educational videos published by admin</p>
+    </div>
+
+    <div id="videoGrid" class="video-grid">
+      <div style="text-align: center; padding: 40px;">
+        <div class="loading-spinner"></div>
+        <p style="font-family: 'Libre Baskerville', serif; color: var(--text-muted); margin-top: 16px;">Loading videos...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Player Modal -->
+  <div id="videoPlayerModal" class="video-player-modal">
+    <button class="close-player-btn" onclick="closeVideoPlayer()" title="Close (Esc)"></button>
+    
+    <div class="video-player-content">
+      <div class="video-player-wrapper">
+        <video 
+          id="mainVideoPlayer" 
+          class="native-video-player" 
+          controls 
+          controlsList="nodownload"
+          preload="metadata"
+        >
+          Your browser does not support video playback.
+        </video>
+      </div>
+
+      <div class="video-details">
+        <h2 id="playerVideoTitle" class="video-details-title"></h2>
+        <p id="playerVideoDescription" class="video-details-description"></p>
+        <div id="playerVideoMeta" class="video-details-meta"></div>
+      </div>
+
+      <div class="keyboard-hints">
+        <h3>⌨️ Keyboard Shortcuts</h3>
+        <div class="keyboard-hint-list">
+          <div class="keyboard-hint">
+            <span class="keyboard-key">Space</span>
+            <span>Play / Pause</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">K</span>
+            <span>Play / Pause</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">←</span>
+            <span>Rewind 5s</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">→</span>
+            <span>Forward 5s</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">J</span>
+            <span>Rewind 10s</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">L</span>
+            <span>Forward 10s</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">↑</span>
+            <span>Volume up</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">↓</span>
+            <span>Volume down</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">M</span>
+            <span>Mute / Unmute</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">F</span>
+            <span>Fullscreen</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">0-9</span>
+            <span>Jump to %</span>
+          </div>
+          <div class="keyboard-hint">
+            <span class="keyboard-key">Esc</span>
+            <span>Close player</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth-guard.js"></script>
+  <script>
+    const API = window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000' 
+      : 'https://teenagerplaybook.onrender.com';
+
+    let currentVideos = [];
+    let currentVideoIndex = -1;
+
+    // Load videos on page load
+    async function loadVideos() {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API}/published-files`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error('Failed to load videos');
+        const files = await res.json();
+        
+        // Filter only video files
+        const videos = files.filter(f => {
+          const ext = (f.filename || '').split('.').pop().toLowerCase();
+          return ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'].includes(ext);
+        });
+
+        currentVideos = videos;
+        renderVideoGrid(videos);
+      } catch (err) {
+        console.error('Load error:', err);
+        document.getElementById('videoGrid').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <h2>Could not load videos</h2>
+            <p>${err.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderVideoGrid(videos) {
+      const grid = document.getElementById('videoGrid');
+      
+      if (videos.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📹</div>
+            <h2>No videos yet</h2>
+            <p>Check back soon for educational content</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = videos.map((video, index) => {
+        const duration = formatDuration(video.duration);
+        const uploadedDate = new Date(video.publishedAt || Date.now()).toLocaleDateString();
+        
+        // Get thumbnail URL (Cloudinary auto-generates for videos)
+        let thumbnailUrl = '';
+        if (video.url && video.url.includes('cloudinary')) {
+          // Cloudinary video thumbnail
+          thumbnailUrl = video.url.replace('/upload/', '/upload/so_0/').replace(/\.[^.]+$/, '.jpg');
+        } else {
+          // Fallback placeholder
+          thumbnailUrl = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect fill="%23222" width="320" height="180"/><text x="50%" y="50%" fill="%23888" font-family="Arial" font-size="24" text-anchor="middle" dy=".3em">Video</text></svg>';
+        }
+
+        return `
+          <div class="video-card" onclick="playVideo(${index})">
+            <div class="video-thumbnail">
+              <img src="${thumbnailUrl}" alt="${video.label || video.filename}" loading="lazy">
+              ${duration ? `<div class="video-duration">${duration}</div>` : ''}
+              <div class="play-overlay"></div>
+            </div>
+            <div class="video-info">
+              <div class="video-title">${video.label || video.filename}</div>
+              <div class="video-meta">
+                <span>${uploadedDate}</span>
+                ${video.size ? `<span class="video-meta-dot"></span><span>${video.size}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatDuration(seconds) {
+      if (!seconds) return '';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function playVideo(index) {
+      currentVideoIndex = index;
+      const video = currentVideos[index];
+      const modal = document.getElementById('videoPlayerModal');
+      const player = document.getElementById('mainVideoPlayer');
+      
+      // Set video source
+      const videoUrl = video.url || `${API}/files/${video.filename}`;
+      player.src = videoUrl;
+      
+      // Set video details
+      document.getElementById('playerVideoTitle').textContent = video.label || video.filename;
+      document.getElementById('playerVideoDescription').textContent = video.description || 'No description available';
+      
+      const uploadedDate = new Date(video.publishedAt || Date.now()).toLocaleDateString();
+      document.getElementById('playerVideoMeta').innerHTML = `
+        <span>📅 ${uploadedDate}</span>
+        ${video.size ? `<span>📦 ${video.size}</span>` : ''}
+        ${video.duration ? `<span>⏱️ ${formatDuration(video.duration)}</span>` : ''}
+      `;
+      
+      // Show modal and play
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      player.play().catch(e => console.log('Autoplay prevented:', e));
+    }
+
+    function closeVideoPlayer() {
+      const modal = document.getElementById('videoPlayerModal');
+      const player = document.getElementById('mainVideoPlayer');
+      
+      player.pause();
+      player.src = '';
+      modal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+      currentVideoIndex = -1;
+    }
+
+    // YouTube-like keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('videoPlayerModal');
+      if (!modal.classList.contains('active')) return;
+
+      const player = document.getElementById('mainVideoPlayer');
+      
+      // Prevent default if we're handling the key
+      const handled = ['Space', 'KeyK', 'KeyJ', 'KeyL', 'KeyM', 'KeyF', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape'].includes(e.code);
+      if (handled) e.preventDefault();
+
+      switch (e.code) {
+        case 'Space':
+        case 'KeyK':
+          // Play / Pause
+          if (player.paused) player.play();
+          else player.pause();
+          break;
+        
+        case 'ArrowLeft':
+          // Rewind 5 seconds
+          player.currentTime = Math.max(0, player.currentTime - 5);
+          break;
+        
+        case 'ArrowRight':
+          // Forward 5 seconds
+          player.currentTime = Math.min(player.duration, player.currentTime + 5);
+          break;
+        
+        case 'KeyJ':
+          // Rewind 10 seconds
+          player.currentTime = Math.max(0, player.currentTime - 10);
+          break;
+        
+        case 'KeyL':
+          // Forward 10 seconds
+          player.currentTime = Math.min(player.duration, player.currentTime + 10);
+          break;
+        
+        case 'ArrowUp':
+          // Volume up
+          player.volume = Math.min(1, player.volume + 0.1);
+          break;
+        
+        case 'ArrowDown':
+          // Volume down
+          player.volume = Math.max(0, player.volume - 0.1);
+          break;
+        
+        case 'KeyM':
+          // Mute / Unmute
+          player.muted = !player.muted;
+          break;
+        
+        case 'KeyF':
+          // Fullscreen
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          } else {
+            player.requestFullscreen();
+          }
+          break;
+        
+        case 'Escape':
+          // Close player
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          } else {
+            closeVideoPlayer();
+          }
+          break;
+        
+        case 'Digit0': case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4':
+        case 'Digit5': case 'Digit6': case 'Digit7': case 'Digit8': case 'Digit9':
+          // Jump to percentage (0-9 = 0%-90%)
+          const digit = parseInt(e.code.slice(-1));
+          player.currentTime = (digit / 10) * player.duration;
+          break;
+      }
+    });
+
+    // Close modal on background click
+    document.getElementById('videoPlayerModal').addEventListener('click', (e) => {
+      if (e.target.id === 'videoPlayerModal') {
+        closeVideoPlayer();
+      }
+    });
+
+    // Display user info
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        document.getElementById('userDisplay').textContent = `Logged in as ${payload.displayName || payload.username}`;
+      } catch (e) {
+        console.error('Token parse error:', e);
+      }
+    }
+
+    // Load videos on page load
+    loadVideos();
+  </script>
+</body>
+</html>

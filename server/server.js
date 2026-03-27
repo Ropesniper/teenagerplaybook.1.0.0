@@ -419,14 +419,48 @@ app.delete('/polls/:id', adminMiddleware, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// FILE STORAGE SETUP
-// Must be declared BEFORE any route that uses filesDir
+// FILE STORAGE SETUP — CLOUDINARY (persistent storage)
+// Files uploaded to Cloudinary for permanent storage.
+// Local /files/ directory still created as fallback but not used.
 // ═══════════════════════════════════════════════════════════════
 
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Configure Cloudinary (only if credentials provided)
+const useCloudinary = !!(process.env.CLOUDINARY_CLOUD_NAME && 
+                          process.env.CLOUDINARY_API_KEY && 
+                          process.env.CLOUDINARY_API_SECRET);
+
+if (useCloudinary) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+  console.log('✦ Cloudinary configured for persistent storage');
+} else {
+  console.warn('⚠ Cloudinary credentials missing — using local storage (files will be lost on restart)');
+}
+
+// Fallback local directory (for backward compatibility)
 const filesDir = path.join(__dirname, '..', 'files');
 if (!fs.existsSync(filesDir)) fs.mkdirSync(filesDir, { recursive: true });
 
-const storage = multer.diskStorage({
+// Cloudinary storage configuration
+const cloudinaryStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'teenagerplaybook/videos',
+    allowed_formats: ['mp4', 'webm', 'mov', 'avi', 'mkv', 'pdf', 'jpg', 'png', 'gif', 'jpeg', 'doc', 'docx', 'ppt', 'pptx'],
+    resource_type: 'auto', // auto-detect video/image/raw
+    use_filename: true,
+    unique_filename: true,
+  },
+});
+
+// Local disk storage (fallback)
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, filesDir),
   filename: (req, file, cb) => {
     const raw = (req.body.target || 'Upload').replace(/[/\\:*?"<>|]/g, '_').slice(0, 80);
@@ -434,7 +468,11 @@ const storage = multer.diskStorage({
     cb(null, raw + ext);
   },
 });
+
+// Use Cloudinary if configured, otherwise fallback to local
+const storage = useCloudinary ? cloudinaryStorage : diskStorage;
 const upload = multer({ storage, limits: { fileSize: 500 * 1024 * 1024 } });
+
 
 // ═══════════════════════════════════════════════════════════════
 // FILE SERVING — auth-gated (static middleware cannot serve /files/)
@@ -639,25 +677,145 @@ app.delete('/admin/error-reports/:id', adminMiddleware, async (req, res) => {
 // ADMIN — FILES
 // ═══════════════════════════════════════════════════════════════
 
-app.post('/admin/upload-file', adminMiddleware, upload.single('video'), (req, res) => {
+app.post('/admin/upload-file', adminMiddleware, upload.single('video'), async (req, res) => {
   if (!req.file) return res.status(400).json({ msg: 'No file received' });
-  res.json({ msg: 'Uploaded', filename: req.file.filename });
-});
-
-app.get('/admin/files', adminMiddleware, (req, res) => {
+  
   try {
-    const files = fs.readdirSync(filesDir).filter(f => !f.startsWith('.'))
-      .map(f => { const s = fs.statSync(path.join(filesDir, f)); return { name: f, size: (s.size/1048576).toFixed(1)+' MB' }; })
-      .sort((a, b) => a.name.localeCompare(b.name));
-    res.json(files);
-  } catch (e) { res.json([]); }
+    // Cloudinary response structure
+    if (req.file.path && req.file.path.startsWith('http')) {
+      // File uploaded to Cloudinary
+      const fileData = {
+        msg: 'Uploaded to Cloudinary',
+        filename: req.file.filename || req.file.originalname,
+        url: req.file.path, // Cloudinary URL
+        publicId: req.file.filename, // Cloudinary public_id
+        size: req.file.size,
+        format: req.file.format || path.extname(req.file.originalname).slice(1),
+        resourceType: req.file.resource_type || 'video',
+        duration: req.file.duration || null,
+        width: req.file.width || null,
+        height: req.file.height || null,
+        createdAt: new Date().toISOString(),
+      };
+      return res.json(fileData);
+    } else {
+      // File uploaded to local disk (fallback)
+      return res.json({ 
+        msg: 'Uploaded locally (will be lost on restart)', 
+        filename: req.file.filename,
+        size: req.file.size,
+        isLocal: true,
+      });
+    }
+  } catch (e) {
+    console.error('Upload error:', e);
+    res.status(500).json({ msg: 'Upload failed' });
+  }
 });
 
-app.delete('/admin/files/:name', adminMiddleware, (req, res) => {
-  const fp = path.join(filesDir, path.basename(req.params.name));
-  if (!fs.existsSync(fp)) return res.status(404).json({ msg: 'File not found' });
-  try { fs.unlinkSync(fp); res.json({ msg: 'Deleted' }); }
-  catch (e) { res.status(500).json({ msg: 'Could not delete' }); }
+app.get('/admin/files', adminMiddleware, async (req, res) => {
+  try {
+    if (useCloudinary) {
+      // Fetch files from Cloudinary
+      const result = await cloudinary.api.resources({
+        type: 'upload',
+        prefix: 'teenagerplaybook/videos',
+        max_results: 500,
+        resource_type: 'video',
+      });
+      
+      const files = result.resources.map(r => ({
+        name: r.public_id.split('/').pop(),
+        publicId: r.public_id,
+        url: r.secure_url,
+        size: ((r.bytes || 0) / 1048576).toFixed(1) + ' MB',
+        format: r.format,
+        duration: r.duration || null,
+        width: r.width || null,
+        height: r.height || null,
+        createdAt: r.created_at,
+        thumbnail: r.resource_type === 'video' 
+          ? cloudinary.url(r.public_id, { resource_type: 'video', format: 'jpg', transformation: [{ width: 300, crop: 'fill' }] })
+          : r.secure_url,
+        resourceType: r.resource_type,
+      }));
+      
+      // Also get image/raw files
+      const imageResult = await cloudinary.api.resources({
+        type: 'upload',
+        prefix: 'teenagerplaybook/videos',
+        max_results: 500,
+        resource_type: 'image',
+      });
+      
+      imageResult.resources.forEach(r => {
+        files.push({
+          name: r.public_id.split('/').pop(),
+          publicId: r.public_id,
+          url: r.secure_url,
+          size: ((r.bytes || 0) / 1048576).toFixed(1) + ' MB',
+          format: r.format,
+          width: r.width || null,
+          height: r.height || null,
+          createdAt: r.created_at,
+          thumbnail: r.secure_url,
+          resourceType: 'image',
+        });
+      });
+      
+      return res.json(files.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    } else {
+      // Fallback: local filesystem
+      const files = fs.readdirSync(filesDir).filter(f => !f.startsWith('.'))
+        .map(f => { 
+          const s = fs.statSync(path.join(filesDir, f)); 
+          return { 
+            name: f, 
+            size: (s.size/1048576).toFixed(1)+' MB',
+            isLocal: true,
+          }; 
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return res.json(files);
+    }
+  } catch (e) {
+    console.error('File list error:', e);
+    res.json([]);
+  }
+});
+
+app.delete('/admin/files/:publicId(*)', adminMiddleware, async (req, res) => {
+  try {
+    const publicId = req.params.publicId;
+    
+    if (useCloudinary && publicId.includes('/')) {
+      // Delete from Cloudinary
+      // Try video first, then image/raw
+      let deleted = false;
+      try {
+        await cloudinary.uploader.destroy(publicId, { resource_type: 'video' });
+        deleted = true;
+      } catch (e) {
+        try {
+          await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+          deleted = true;
+        } catch (e2) {
+          await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
+          deleted = true;
+        }
+      }
+      if (deleted) return res.json({ msg: 'Deleted from Cloudinary' });
+    } else {
+      // Delete from local filesystem (fallback)
+      const fp = path.join(filesDir, path.basename(publicId));
+      if (!fs.existsSync(fp)) return res.status(404).json({ msg: 'File not found' });
+      fs.unlinkSync(fp);
+      return res.json({ msg: 'Deleted locally' });
+    }
+  } catch (e) {
+    console.error('Delete error:', e);
+    res.status(500).json({ msg: 'Could not delete' });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
